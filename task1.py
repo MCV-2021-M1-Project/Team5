@@ -97,11 +97,11 @@ def plotResults(results, kBest, imagesDDBB, queryImage):
 
     #initialize the results figure
     fig, big_axes = plt.subplots(nrows=len(methodNames), ncols=1)
-    fig.suptitle('Result')
-    fig.tight_layout(h_pad=1.5)
+    fig.suptitle('')
+    fig.tight_layout(h_pad=1.2)
 
     for row, big_ax in enumerate(big_axes, start=0):
-        big_ax.set_title(methodNames[row], fontsize=8, y = 1.2)
+        big_ax.set_title(methodNames[row], fontsize=10, y = 1.3)
         big_ax.axis("off")
 
     for (j, (methodName, values)) in enumerate (results.items()):
