@@ -10,7 +10,7 @@ import constants as C
 
 def parse_args():
     parser = argparse.ArgumentParser(description= 'Test to parse args')
-    parser.add_argument('-k', '--k_best', type=int, default=4, help='Number of images to retrieve')
+    parser.add_argument('-k', '--k_best', type=int, default=5, help='Number of images to retrieve')
     parser.add_argument('-p', '--path', required=True, type=str, help='Relative path to image folder')
     parser.add_argument('-c', '--color_space', default="Lab", type=str, help='Color space to use')
     parser.add_argument('-q', '--query_image', type=str, help='Relative path to the query image')
@@ -90,20 +90,29 @@ def plotResults(results, kBest, imagesDDBB, queryImage):
     ax = fig.add_subplot(1, 1, 1)
     ax.imshow(queryImage)
     plt.axis("off")
-    
+
+    methodNames = []
     for methodName, values in results.items():
-        
+        methodNames.append(methodName)
+
+    #initialize the results figure
+    fig, big_axes = plt.subplots(nrows=len(methodNames), ncols=1)
+    fig.suptitle('Result')
+    fig.tight_layout(h_pad=1.5)
+
+    for row, big_ax in enumerate(big_axes, start=0):
+        big_ax.set_title(methodNames[row], fontsize=8, y = 1.2)
+        big_ax.axis("off")
+
+    for (j, (methodName, values)) in enumerate (results.items()):
+
         bestKValues = values[0:kBest]
-        
-        # initialize the results figure
-        fig = plt.figure("Results: %s" % (methodName))
-        fig.suptitle(methodName, fontsize = 20)
 
         # loop over the results
         for (i, (v, k)) in enumerate(bestKValues):
             # show the result
-            ax = fig.add_subplot(1, len(bestKValues), i + 1)
-            ax.set_title("%s: %.2f" % (os.path.basename(k), v))
+            ax = fig.add_subplot(len(methodNames), kBest, j * kBest + i + 1)
+            ax.set_title("%s: %.2f" % (os.path.basename(k), v), fontsize = 5)
             plt.imshow(imagesDDBB[k])
             plt.axis("off")
 

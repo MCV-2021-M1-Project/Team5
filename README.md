@@ -1,8 +1,14 @@
 # Team5
 
-# Usage
-Image search with color histogram
+## Usage
+Query a single image
 
 ``
-$ task1.py -k 5 -p "./path/to/image/folder" -c "Lab" -q "./BBDD/query.jpg"
+$ Python3 task1.py -k 5 -p "./path/to/image/folder" -c "Lab" -q "./query/image.jpg" -plt True
+``
+
+Query images from a folder
+
+``
+$ Python3 task1.py -k 5 -p "./path/to/image/folder" -c "Lab" -f "./query/image/folder.jpg" -plt True
 ``
