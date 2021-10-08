@@ -36,7 +36,7 @@ def getImagesAndHistograms(folderPath, colorSpace):
         
     return ddbb_images, ddbb_histograms
 
-def compareHistograms(queryImage, colorSpace, k_best, ddbb_images, ddbb_histograms, plot=False):
+def compareHistograms(queryImage, colorSpace, k_best, ddbb_images, ddbb_histograms, plot):
     # Change to the color space that is going to be used to compare histograms
     queryImageColorSpace = cv2.cvtColor(queryImage, C.OPENCV_COLOR_SPACES[colorSpace][0])
     channels, mask, bins, colorRange = C.OPENCV_COLOR_SPACES[colorSpace][1:]
