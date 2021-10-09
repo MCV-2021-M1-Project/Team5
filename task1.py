@@ -36,7 +36,7 @@ def getImagesAndHistograms(folderPath, colorSpace):
         
     return ddbb_images, ddbb_histograms
 
-def compareHistograms(queryImage, colorSpace, k_best, ddbb_images, ddbb_histograms, plot):
+def compareHistograms(queryImage, colorSpace, k_best, ddbb_histograms):
     # Change to the color space that is going to be used to compare histograms
     queryImageColorSpace = cv2.cvtColor(queryImage, C.OPENCV_COLOR_SPACES[colorSpace][0])
     channels, mask, bins, colorRange = C.OPENCV_COLOR_SPACES[colorSpace][1:]
@@ -44,9 +44,6 @@ def compareHistograms(queryImage, colorSpace, k_best, ddbb_images, ddbb_histogra
     # Compute the histogram with color space passed as argument
     queryHist = cv2.calcHist([queryImageColorSpace], channels, mask, bins, colorRange)
     queryHist = cv2.normalize(queryHist, queryHist).flatten()
-
-    # chnage the color space to RGB to plot the image later
-    queryImageRGB = cv2.cvtColor(queryImage, cv2.COLOR_BGR2RGB)
 
     allResults = {}
 
@@ -66,10 +63,6 @@ def compareHistograms(queryImage, colorSpace, k_best, ddbb_images, ddbb_histogra
 
         # sort the results
         allResults[methodName] = sorted([(v, k) for (k, v) in results.items()], reverse=reverse)
-
-    # show the query image
-    if plot:
-        plotResults(allResults, k_best, ddbb_images, queryImageRGB)
 
     return allResults
 
@@ -91,6 +84,7 @@ def plotResults(results, kBest, imagesDDBB, queryImage):
     ax.imshow(queryImage)
     plt.axis("off")
 
+    # get method names to a list
     methodNames = []
     for methodName, values in results.items():
         methodNames.append(methodName)
@@ -100,10 +94,12 @@ def plotResults(results, kBest, imagesDDBB, queryImage):
     fig.suptitle('')
     fig.tight_layout(h_pad=1.2)
 
+    # set row names
     for row, big_ax in enumerate(big_axes, start=0):
         big_ax.set_title(methodNames[row], fontsize=10, y = 1.3)
         big_ax.axis("off")
 
+    # plot each image in subplot
     for (j, (methodName, values)) in enumerate (results.items()):
 
         bestKValues = values[0:kBest]
@@ -123,9 +119,16 @@ def main():
     args = parse_args()
     ddbb_images, ddbb_histograms = getImagesAndHistograms(args.path, args.color_space)
 
+    # query either an image or a folder
     if args.query_image:
         queryImage = cv2.imread(args.query_image)
-        compareHistograms(queryImage, args.color_space, args.k_best, ddbb_images, ddbb_histograms, args.plot_result)
+        allResults = compareHistograms(queryImage, args.color_space, args.k_best, ddbb_histograms)
+
+        # plot K best coincidences
+        if args.plot_result:
+            # chnage the color space to RGB to plot the image later
+            queryImageRGB = cv2.cvtColor(queryImage, cv2.COLOR_BGR2RGB)
+            plotResults(allResults, args.k_best, ddbb_images, queryImageRGB)
 
     elif args.query_image_folder:
         # Sort query images in alphabetical order
@@ -139,7 +142,11 @@ def main():
             images.append(n)
 
         for queryImage in images:
-            compareHistograms(queryImage, args.color_space, args.k_best, ddbb_images, ddbb_histograms, args.plot_result)
+            allResults = compareHistograms(queryImage, args.color_space, args.k_best, ddbb_histograms)
+            if args.plot_result:
+                # chnage the color space to RGB to plot the image later
+                queryImageRGB = cv2.cvtColor(queryImage, cv2.COLOR_BGR2RGB)
+                plotResults(allResults, args.k_best, ddbb_images, queryImageRGB)
     else:
         print("No query")
 
