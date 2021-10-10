@@ -10,11 +10,11 @@ import constants as C
 
 def parse_args():
     parser = argparse.ArgumentParser(description= 'Test to parse args')
-    parser.add_argument('-k', '--k_best', type=int, default=5, help='Number of images to retrieve')
-    parser.add_argument('-p', '--path', required=True, type=str, help='Relative path to image folder')
-    parser.add_argument('-c', '--color_space', default="Lab", type=str, help='Color space to use')
+    parser.add_argument('-p', '--path', required=True, type=str, help='Relative path to dataset folder')
     parser.add_argument('-q', '--query_image', type=str, help='Relative path to the query image')
-    parser.add_argument('-f', '--query_image_folder', type=str, help='Relative path to the folder contining the query images')
+    parser.add_argument('-f', '--query_image_folder', type=str, help='Relative path to the folder containing the query images')
+    parser.add_argument('-k', '--k_best', type=int, default=5, help='Number of images to retrieve')
+    parser.add_argument('-c', '--color_space', default="Lab", type=str, help='Color space to use')
     parser.add_argument('-plt', '--plot_result', type=bool, default=False, help='Set to True to plot results')
     return parser.parse_args()
 
