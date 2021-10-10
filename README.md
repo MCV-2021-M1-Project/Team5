@@ -11,19 +11,26 @@ Image descriptor: image gray-level / color histograms (1D)
 
 ``
 $ task1.py [-p path] [-q query_image] [-f query_image_folder] [-k k_best] [-c color_space] [-plt plot_result]
+``
 
 arguments:
+
   -p, --path            relative path to dataset folder
+  
   -q, --query_image     relative path to the query image
+  
   -f, --query_image_folder  
                         relative path to the folder containing the query images
-
+                        
 optional arguments:
+
   -h, --help            show this help message and exit
+  
   -k, --k_best          number of images to retrieve
+  
   -c, --color_space     color space to use: "Gray", "RGB", "Lab", "HSV", "YCrCb"
+  
   -plt, --plot_result   set to True to plot results
-``
 
 ## Example
 Query a single image
