@@ -2,17 +2,21 @@ import os
 import cv2
 import glob
 import argparse
-
+from pathlib import Path
 import pickle
 import numpy as np
 from matplotlib import pyplot as plt
 import constants as C
+from average_metrics import mapk
 
 def parse_args():
-    parser = argparse.ArgumentParser(description= 'Test to parse args')
+    parser = argparse.ArgumentParser(description= 'Arguments to run the task 1 script')
     parser.add_argument('-k', '--k_best', type=int, default=5, help='Number of images to retrieve')
-    parser.add_argument('-p', '--path', required=True, type=str, help='Relative path to image folder')
+    parser.add_argument('-p', '--path', default='./BBDD', type=str, help='Relative path to image folder')
     parser.add_argument('-c', '--color_space', default="Lab", type=str, help='Color space to use')
+    parser.add_argument('-g', '--gt_results', type=str, default='gt_corresps.pkl', help='Relative path to the query grpund truth results')
+    parser.add_argument('-r', '--computed_results', type=str, default='result.pkl', help='Relative path to the computed results')
+    parser.add_argument('-v', '--validation_metrics', type=bool, default=False, help='Set to true to extract the metrics')
     parser.add_argument('-q', '--query_image', type=str, help='Relative path to the query image')
     parser.add_argument('-f', '--query_image_folder', type=str, help='Relative path to the folder contining the query images')
     parser.add_argument('-m', '--mask', type=bool, default=False, help='Set True to remove background')
@@ -167,38 +171,64 @@ def backgroundRemoval(queryImage):
 
 def main():
     args = parse_args()
-    ddbb_images, ddbb_histograms = getImagesAndHistograms(args.path, args.color_space)
 
-    # query either an image or a folder
-    if args.query_image:
-        queryImage = cv2.imread(args.query_image)
-        allResults = compareHistograms(queryImage, args.color_space, args.mask, args.k_best, ddbb_histograms)
 
-        # plot K best coincidences
-        if args.plot_result:
-            # chnage the color space to RGB to plot the image later
-            queryImageRGB = cv2.cvtColor(queryImage, cv2.COLOR_BGR2RGB)
-            plotResults(allResults, args.k_best, ddbb_images, queryImageRGB)
+    if args.validation_metrics:
+        with open(args.gt_results, 'rb') as reader:
+            gtRes = pickle.load(reader)
 
-    elif args.query_image_folder:
-        # Sort query images in alphabetical order
-        filenames = [img for img in glob.glob(args.query_image_folder + "/*" + ".jpg")]
-        filenames.sort()
+        with open(args.computed_results, 'rb') as reader:
+            computedRes = pickle.load(reader)
+        
+        resultScore = mapk(gtRes, computedRes, args.k_best)
+        print(f'Average precision in {args.computed_results} for k = {args.k_best} is {resultScore}.')
+    else:
+        ddbb_images, ddbb_histograms = getImagesAndHistograms(args.path, args.color_space)
 
-        # Load images to a list
-        images = []
-        for img in filenames:
-            n = cv2.imread(img)
-            images.append(n)
+        # query either an image or a folder
+        if args.query_image:
+            queryImage = cv2.imread(args.query_image)
+            allResults = compareHistograms(queryImage, args.color_space, args.k_best, ddbb_histograms)
 
-        for queryImage in images:
-            allResults = compareHistograms(queryImage, args.color_space, args.mask, args.k_best, ddbb_histograms)
+            # plot K best coincidences
             if args.plot_result:
                 # chnage the color space to RGB to plot the image later
                 queryImageRGB = cv2.cvtColor(queryImage, cv2.COLOR_BGR2RGB)
                 plotResults(allResults, args.k_best, ddbb_images, queryImageRGB)
-    else:
-        print("No query")
+
+        elif args.query_image_folder:
+            # Sort query images in alphabetical order
+            filenames = [img for img in glob.glob(args.query_image_folder + "/*"+ ".jpg")]
+            filenames.sort()
+
+            # Load images to a list
+            images = []
+            for img in filenames:
+                n = cv2.imread(img)
+                images.append(n)
+
+            resultPickle = {}
+            for queryImage in images:
+                allResults = compareHistograms(queryImage, args.color_space, args.k_best, ddbb_histograms)
+                #Add the best k pictures to the array that is going to be exported as pickle
+                for methodName, method in allResults.items():
+                    bestPictures = []
+                    if methodName not in resultPickle:
+                        resultPickle[methodName] = []
+                    for score, name in allResults[methodName][0:args.k_best]:
+                        bestPictures.append(int(Path(name).stem.split('_')[1]))
+                    resultPickle[methodName].append(bestPictures)
+                
+                if args.plot_result:
+                    # chnage the color space to RGB to plot the image later
+                    queryImageRGB = cv2.cvtColor(queryImage, cv2.COLOR_BGR2RGB)
+                    plotResults(allResults, args.k_best, ddbb_images, queryImageRGB)
+            
+            #Result export
+            for name, res in resultPickle.items():
+                with open(name + '_' + args.color_space + '.pkl', 'wb') as handle:
+                    pickle.dump(res, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
 
 if __name__ == "__main__":
     main()
