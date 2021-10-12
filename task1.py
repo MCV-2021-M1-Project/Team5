@@ -18,7 +18,6 @@ def parse_args():
     parser.add_argument('-r', '--computed_results', type=str, default='result.pkl', help='Relative path to the computed results')
     parser.add_argument('-v', '--validation_metrics', type=bool, default=False, help='Set to true to extract the metrics')
     parser.add_argument('-q', '--query_image', type=str, help='Relative path to the query image')
-    #parser.add_argument('-a', '--mask_annotation', type=str, default=None, help="Relative path to the query image's mask annotation")
     parser.add_argument('-f', '--query_image_folder', type=str, help='Relative path to the folder contining the query images')
     parser.add_argument('-m', '--mask', type=bool, default=False, help='Set True to remove background')
     parser.add_argument('-plt', '--plot_result', type=bool, default=False, help='Set to True to plot results')
@@ -213,7 +212,7 @@ def main():
         # query either an image or a folder
         if args.query_image:
             queryImage = cv2.imread(args.query_image)
-            allResults = compareHistograms(queryImage, args.color_space, args.k_best, ddbb_histograms)
+            allResults = compareHistograms(queryImage, args.color_space, args.mask, args.k_best, ddbb_histograms)
 
             # plot K best coincidences
             if args.plot_result:
@@ -234,7 +233,7 @@ def main():
 
             resultPickle = {}
             for queryImage in images:
-                allResults = compareHistograms(queryImage, args.color_space, args.k_best, ddbb_histograms)
+                allResults = compareHistograms(queryImage, args.color_space, args.mask, args.k_best, ddbb_histograms)
                 #Add the best k pictures to the array that is going to be exported as pickle
                 for methodName, method in allResults.items():
                     bestPictures = []
