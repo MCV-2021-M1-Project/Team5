@@ -14,6 +14,7 @@ def parse_args():
     parser.add_argument('-p', '--path', required=True, type=str, help='Relative path to image folder')
     parser.add_argument('-c', '--color_space', default="Lab", type=str, help='Color space to use')
     parser.add_argument('-q', '--query_image', type=str, help='Relative path to the query image')
+    #parser.add_argument('-a', '--mask_annotation', type=str, default=None, help="Relative path to the query image's mask annotation")
     parser.add_argument('-f', '--query_image_folder', type=str, help='Relative path to the folder contining the query images')
     parser.add_argument('-m', '--mask', type=bool, default=False, help='Set True to remove background')
     parser.add_argument('-plt', '--plot_result', type=bool, default=False, help='Set to True to plot results')
@@ -142,7 +143,6 @@ def backgroundRemoval(queryImage):
     
     # Determining threshold (dicarding darker values)
     predominantColor = np.where(queryHistG == max(queryHistG[100:256]))[0][0]
-    print(predominantColor)
     threshWidth = 80
     threshMin, threshMax = predominantColor - (threshWidth/2), predominantColor + (threshWidth/2)
     
@@ -155,13 +155,38 @@ def backgroundRemoval(queryImage):
     plt.axis("off")
     plt.title("Mask")
     plt.show()
-        
+    
     # Displaying mask on top of image [TO BE REMOVED]
-    masked = cv2.bitwise_and(queryImage, queryImage, mask=mask)
-    plt.imshow(cv2.cvtColor(masked, cv2.COLOR_BGR2RGB))
-    plt.axis("off")
-    plt.title("MaskedImage")
-    plt.show()
+    #masked = cv2.bitwise_and(queryImage, queryImage, mask=mask)
+    #plt.imshow(cv2.cvtColor(masked, cv2.COLOR_BGR2RGB))
+    #plt.axis("off")
+    #plt.title("MaskedImage")
+    #plt.show()
+    
+    # Mask evaluation
+    args = parse_args()
+    annotationPath = args.query_image.replace('jpg', 'png')
+    annotation = cv2.imread(annotationPath)
+    annotation = cv2.cvtColor(annotation, cv2.COLOR_BGR2GRAY)
+    
+    def intersect_matrices(m1, m2):
+        if not (m1.shape == m2.shape):
+            return False
+        intersect = np.where((m1 == m2), m1, 0)
+        return intersect
+    
+    truePositive = np.count_nonzero(intersect_matrices(annotation, mask))
+    falseNegative = np.count_nonzero(intersect_matrices(annotation, cv2.bitwise_not(mask)))
+    falsePositive = np.count_nonzero(intersect_matrices(cv2.bitwise_not(annotation), mask))
+    trueNegative = np.count_nonzero(intersect_matrices(cv2.bitwise_not(annotation), cv2.bitwise_not(mask)))
+    
+    precision = truePositive / (truePositive + falsePositive)
+    print('Precision: ' + '{:.2f}'.format(precision))
+    recall = truePositive / (truePositive + falseNegative)
+    print('Recall: ' + '{:.2f}'.format(recall))
+    
+    F1_measure = 2 * ((precision * recall) / (precision + recall))
+    print('F1-measure: ' + '{:.2f}'.format(F1_measure))
     
     return mask
 
@@ -194,7 +219,7 @@ def main():
         for queryImage in images:
             allResults = compareHistograms(queryImage, args.color_space, args.mask, args.k_best, ddbb_histograms)
             if args.plot_result:
-                # chnage the color space to RGB to plot the image later
+                # change the color space to RGB to plot the image later
                 queryImageRGB = cv2.cvtColor(queryImage, cv2.COLOR_BGR2RGB)
                 plotResults(allResults, args.k_best, ddbb_images, queryImageRGB)
     else:
