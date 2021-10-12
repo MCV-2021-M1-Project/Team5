@@ -14,7 +14,7 @@ def parse_args():
     parser.add_argument('-k', '--k_best', type=int, default=5, help='Number of images to retrieve')
     parser.add_argument('-p', '--path', default='./BBDD', type=str, help='Relative path to image folder')
     parser.add_argument('-c', '--color_space', default="Lab", type=str, help='Color space to use')
-    parser.add_argument('-g', '--gt_results', type=str, default='gt_corresps.pkl', help='Relative path to the query grpund truth results')
+    parser.add_argument('-g', '--gt_results', type=str, default='gt_corresps.pkl', help='Relative path to the query ground truth results')
     parser.add_argument('-r', '--computed_results', type=str, default='result.pkl', help='Relative path to the computed results')
     parser.add_argument('-v', '--validation_metrics', type=bool, default=False, help='Set to true to extract the metrics')
     parser.add_argument('-q', '--query_image', type=str, help='Relative path to the query image')
@@ -34,10 +34,19 @@ def getImagesAndHistograms(folderPath, colorSpace):
         # Denoising images using Gaussian Blur
         image = cv2.GaussianBlur(image,(3,3), 0)
         
+        # Equalizing Saturation and Lightness via HSV
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        h, s, v, = cv2.split(image)
+        eqS = cv2.equalizeHist(s)
+        eqV = cv2.equalizeHist(v)
+        image = cv2.merge((h, eqS, eqV))
+        image = cv2.cvtColor(image, cv2.COLOR_HSV2BGR)
+        
         # Changing color space
         aux = cv2.cvtColor(image, C.OPENCV_COLOR_SPACES[colorSpace][0])
         
-        ddbb_images[filename] = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) #Storage the image as RGB for later plot
+        # Store the image as RGB for later plot
+        ddbb_images[filename] = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         channels, mask, bins, colorRange = C.OPENCV_COLOR_SPACES[colorSpace][1:]
 
         # Compute the histogram with color space passed as argument
@@ -50,6 +59,14 @@ def getImagesAndHistograms(folderPath, colorSpace):
 def compareHistograms(queryImage, colorSpace, mask_check, k_best, ddbb_histograms):
     # Denoising query image using Gaussian blur
     queryImage = cv2.GaussianBlur(queryImage,(3,3), 0)
+    
+    # Equalizing Saturation and Lightness via HSV
+    queryImage = cv2.cvtColor(queryImage, cv2.COLOR_BGR2HSV)
+    h, s, v, = cv2.split(queryImage)
+    eqS = cv2.equalizeHist(s)
+    eqV = cv2.equalizeHist(v)
+    queryImage = cv2.merge((h, eqS, eqV))
+    queryImage = cv2.cvtColor(queryImage, cv2.COLOR_HSV2BGR)
     
     # Change to the color space that is going to be used to compare histograms
     queryImageColorSpace = cv2.cvtColor(queryImage, C.OPENCV_COLOR_SPACES[colorSpace][0])
@@ -94,7 +111,6 @@ def getBestKCoincidences(comparisonMethod, baseImageHistograms, queryImageHistog
         results[k] = d
     return results
 
-
 def plotResults(results, kBest, imagesDDBB, queryImage):
     # show the query image
     fig = plt.figure("Query")
@@ -136,10 +152,6 @@ def plotResults(results, kBest, imagesDDBB, queryImage):
 def backgroundRemoval(queryImage):
     # Converting query image to Grayscale
     queryImageG = cv2.cvtColor(queryImage, cv2.COLOR_BGR2GRAY)
-    plt.imshow(cv2.cvtColor(queryImageG, cv2.COLOR_GRAY2RGB))
-    plt.axis("off")
-    plt.title("QueryImage")
-    plt.show()
     
     # Grayscale histogram
     queryHistG = cv2.calcHist([queryImageG], [0], None, [256], [0, 256])
@@ -196,7 +208,6 @@ def backgroundRemoval(queryImage):
 def main():
     args = parse_args()
 
-
     if args.validation_metrics:
         with open(args.gt_results, 'rb') as reader:
             gtRes = pickle.load(reader)
@@ -206,6 +217,7 @@ def main():
         
         resultScore = mapk(gtRes, computedRes, args.k_best)
         print(f'Average precision in {args.computed_results} for k = {args.k_best} is {resultScore}.')
+        
     else:
         ddbb_images, ddbb_histograms = getImagesAndHistograms(args.path, args.color_space)
 
