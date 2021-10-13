@@ -37,9 +37,8 @@ def getImagesAndHistograms(folderPath, colorSpace):
         # Equalizing Saturation and Lightness via HSV
         image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         h, s, v, = cv2.split(image)
-        eqS = cv2.equalizeHist(s)
         eqV = cv2.equalizeHist(v)
-        image = cv2.merge((h, eqS, eqV))
+        image = cv2.merge((h, s, eqV))
         image = cv2.cvtColor(image, cv2.COLOR_HSV2BGR)
         
         # Changing color space
@@ -56,16 +55,15 @@ def getImagesAndHistograms(folderPath, colorSpace):
         
     return ddbb_images, ddbb_histograms
 
-def compareHistograms(queryImage, colorSpace, mask_check, k_best, ddbb_histograms):
+def compareHistograms(queryImage, colorSpace, mask_check, k_best, ddbb_histograms, filename):
     # Denoising query image using Gaussian blur
     queryImage = cv2.GaussianBlur(queryImage,(3,3), 0)
     
     # Equalizing Saturation and Lightness via HSV
     queryImage = cv2.cvtColor(queryImage, cv2.COLOR_BGR2HSV)
     h, s, v, = cv2.split(queryImage)
-    eqS = cv2.equalizeHist(s)
     eqV = cv2.equalizeHist(v)
-    queryImage = cv2.merge((h, eqS, eqV))
+    queryImage = cv2.merge((h, s, eqV))
     queryImage = cv2.cvtColor(queryImage, cv2.COLOR_HSV2BGR)
     
     # Change to the color space that is going to be used to compare histograms
@@ -74,7 +72,7 @@ def compareHistograms(queryImage, colorSpace, mask_check, k_best, ddbb_histogram
     
     # Apply mask if applicable
     if mask_check:
-        mask = backgroundRemoval(queryImage)
+        mask, precision, recall, F1_measure = backgroundRemoval(queryImage, filename)
 
     # Compute the histogram with color space passed as argument
     queryHist = cv2.calcHist([queryImageColorSpace], channels, mask, bins, colorRange)
@@ -99,7 +97,7 @@ def compareHistograms(queryImage, colorSpace, mask_check, k_best, ddbb_histogram
         # sort the results
         allResults[methodName] = sorted([(v, k) for (k, v) in results.items()], reverse=reverse)
 
-    return allResults
+    return allResults, precision, recall, F1_measure
 
 def getBestKCoincidences(comparisonMethod, baseImageHistograms, queryImageHistogram, k):
     # loop over the index
@@ -149,38 +147,65 @@ def plotResults(results, kBest, imagesDDBB, queryImage):
     # show the OpenCV methods
     plt.show()
 
-def backgroundRemoval(queryImage):
-    # Converting query image to Grayscale
-    queryImageG = cv2.cvtColor(queryImage, cv2.COLOR_BGR2GRAY)
+def backgroundRemoval(queryImage, filename):
+    #Converting image to HSV and Lab
+    queryImageHSV = cv2.cvtColor(queryImage, cv2.COLOR_BGR2HSV)
+    queryImageLab = cv2.cvtColor(queryImage, cv2.COLOR_BGR2LAB)
     
-    # Grayscale histogram
-    queryHistG = cv2.calcHist([queryImageG], [0], None, [256], [0, 256])
-    
-    # Determining threshold (dicarding darker values)
-    predominantColor = np.where(queryHistG == max(queryHistG[100:256]))[0][0]
-    threshWidth = 80
-    threshMin, threshMax = predominantColor - (threshWidth/2), predominantColor + (threshWidth/2)
-    
-    # Mask based on threshold
-    _, mask1 = cv2.threshold(queryImageG, threshMax, 255, cv2.THRESH_BINARY)
-    _, mask2 = cv2.threshold(queryImageG, threshMin, 255, cv2.THRESH_BINARY_INV)
-    mask = mask1 + mask2
+    #Splitting in HSV and Lab channels
+    h, s, v = cv2.split(queryImageHSV)
+    L, a, b = cv2.split(queryImageLab)
 
+    #Determining thresholds
+    threshMinS, threshMaxS = 0, 60
+    threshMinV, threshMaxV = 80, 255
+    threshMinA, threshMaxA = 125, 255
+    threshMinB, threshMaxB = 125, 255
+
+    #Masks based on thresholds
+    _, mask1S = cv2.threshold(s, threshMaxS, 255, cv2.THRESH_BINARY)
+    _, mask2S = cv2.threshold(s, threshMinS, 255, cv2.THRESH_BINARY_INV)
+    maskS = mask1S + mask2S
+    _, mask1V = cv2.threshold(v, threshMaxV, 255, cv2.THRESH_BINARY)
+    _, mask2V = cv2.threshold(v, threshMinV, 255, cv2.THRESH_BINARY_INV)
+    maskV = mask1V + mask2V
+    _, mask1A = cv2.threshold(a, threshMaxA, 255, cv2.THRESH_BINARY)
+    _, mask2A = cv2.threshold(a, threshMinA, 255, cv2.THRESH_BINARY_INV)
+    maskA = mask1A + mask2A
+    _, mask1B = cv2.threshold(b, threshMaxB, 255, cv2.THRESH_BINARY)
+    _, mask2B = cv2.threshold(b, threshMinB, 255, cv2.THRESH_BINARY_INV)
+    maskB = mask1B + mask2B
+
+    #Combining masks into a single mask
+    def intersect_matrices(m1, m2):
+        if not (m1.shape == m2.shape):
+            return False
+        intersect = np.where((m1 == m2), m1, 0)
+        return intersect
+    mask = cv2.bitwise_not(intersect_matrices(cv2.bitwise_not(maskS), cv2.bitwise_not(maskV)))
+    mask = cv2.bitwise_not(intersect_matrices(cv2.bitwise_not(mask), cv2.bitwise_not(maskA)))
+    mask = cv2.bitwise_not(intersect_matrices(cv2.bitwise_not(mask), cv2.bitwise_not(maskB)))
+
+    # Exporting mask as .png file
+    cv2.imwrite(os.path.basename(filename).replace('jpg', 'png'), mask)
+
+    '''
+    # Displaying mask
     plt.imshow(cv2.cvtColor(mask, cv2.COLOR_GRAY2RGB))
     plt.axis("off")
     plt.title("Mask")
     plt.show()
     
     # Displaying mask on top of image [TO BE REMOVED]
-    #masked = cv2.bitwise_and(queryImage, queryImage, mask=mask)
-    #plt.imshow(cv2.cvtColor(masked, cv2.COLOR_BGR2RGB))
-    #plt.axis("off")
-    #plt.title("MaskedImage")
-    #plt.show()
+    masked = cv2.bitwise_and(queryImage, queryImage, mask=mask)
+    plt.imshow(cv2.cvtColor(masked, cv2.COLOR_BGR2RGB))
+    plt.axis("off")
+    plt.title("MaskedImage")
+    plt.show()
+    '''
     
     # Mask evaluation
-    args = parse_args()
-    annotationPath = args.query_image.replace('jpg', 'png')
+    annotationPath = filename.replace('jpg', 'png')
     annotation = cv2.imread(annotationPath)
     annotation = cv2.cvtColor(annotation, cv2.COLOR_BGR2GRAY)
     
@@ -196,14 +221,13 @@ def backgroundRemoval(queryImage):
     trueNegative = np.count_nonzero(intersect_matrices(cv2.bitwise_not(annotation), cv2.bitwise_not(mask)))
     
     precision = truePositive / (truePositive + falsePositive)
-    print('Precision: ' + '{:.2f}'.format(precision))
+    #print('Precision: ' + '{:.2f}'.format(precision))
     recall = truePositive / (truePositive + falseNegative)
-    print('Recall: ' + '{:.2f}'.format(recall))
-    
+    #print('Recall: ' + '{:.2f}'.format(recall))
     F1_measure = 2 * ((precision * recall) / (precision + recall))
-    print('F1-measure: ' + '{:.2f}'.format(F1_measure))
+    #print('F1-measure: ' + '{:.2f}'.format(F1_measure))
     
-    return mask
+    return mask, precision, recall, F1_measure
 
 def main():
     args = parse_args()
@@ -224,7 +248,9 @@ def main():
         # query either an image or a folder
         if args.query_image:
             queryImage = cv2.imread(args.query_image)
-            allResults = compareHistograms(queryImage, args.color_space, args.mask, args.k_best, ddbb_histograms)
+            filename = args.query_image
+            comp = compareHistograms(queryImage, args.color_space, args.mask, args.k_best, ddbb_histograms, filename)
+            allResults = comp[0]
 
             # plot K best coincidences
             if args.plot_result:
@@ -243,9 +269,19 @@ def main():
                 n = cv2.imread(img)
                 images.append(n)
 
+            # Initialize result containers
             resultPickle = {}
+            precisionList = []
+            recallList = []
+            F1List = []
+            
+            i = 0
+            
             for queryImage in images:
-                allResults = compareHistograms(queryImage, args.color_space, args.mask, args.k_best, ddbb_histograms)
+                filename = filenames[i]
+                i += 1
+                comp = compareHistograms(queryImage, args.color_space, args.mask, args.k_best, ddbb_histograms, filename)
+                allResults = comp[0]
                 #Add the best k pictures to the array that is going to be exported as pickle
                 for methodName, method in allResults.items():
                     bestPictures = []
@@ -255,13 +291,30 @@ def main():
                         bestPictures.append(int(Path(name).stem.split('_')[1]))
                     resultPickle[methodName].append(bestPictures)
                 
+                precisionList.append(comp[1])
+                recallList.append(comp[2])
+                F1List.append(comp[3])
+                
                 if args.plot_result:
-                    # chnage the color space to RGB to plot the image later
+                    # change the color space to RGB to plot the image later
                     queryImageRGB = cv2.cvtColor(queryImage, cv2.COLOR_BGR2RGB)
                     plotResults(allResults, args.k_best, ddbb_images, queryImageRGB)
             
+            # Mask evaluation results
+            avgPrecision = sum(precisionList)/len(precisionList)
+            print(f'Average precision of masks is {avgPrecision}.')
+            avgRecall = sum(recallList)/len(recallList)
+            print(f'Average recall of masks is {avgRecall}.')
+            avgF1 = sum(F1List)/len(F1List)
+            print(f'Average F1-measure of masks is {avgF1}.')
+
             #Result export
+            with open(args.gt_results, 'rb') as reader:
+                 gtRes = pickle.load(reader)
+
             for name, res in resultPickle.items():
+                resultScore = mapk(gtRes, res, args.k_best)
+                print(f'Average precision in {name} for k = {args.k_best} is {resultScore}.')
                 with open(name + '_' + args.color_space + '.pkl', 'wb') as handle:
                     pickle.dump(res, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
