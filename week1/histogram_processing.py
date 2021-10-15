@@ -68,7 +68,11 @@ def compareHistograms(queryImage, colorSpace, mask_check, k_best, ddbb_histogram
     """ 
     # Denoising query image using Gaussian blur
     queryImage = cv2.GaussianBlur(queryImage,(3,3), 0)
-    
+
+    # Apply mask if applicable
+    if mask_check:
+        mask, precision, recall, F1_measure = backgroundRemoval(queryImage, filename)
+
     # Equalizing Saturation and Lightness via HSV
     queryImage = cv2.cvtColor(queryImage, cv2.COLOR_BGR2HSV)
     h, s, v, = cv2.split(queryImage)
@@ -79,10 +83,7 @@ def compareHistograms(queryImage, colorSpace, mask_check, k_best, ddbb_histogram
     # Change to the color space that is going to be used to compare histograms
     queryImageColorSpace = cv2.cvtColor(queryImage, C.OPENCV_COLOR_SPACES[colorSpace][0])
     channels, mask, bins, colorRange = C.OPENCV_COLOR_SPACES[colorSpace][1:]
-    
-    # Apply mask if applicable
-    if mask_check:
-        mask, precision, recall, F1_measure = backgroundRemoval(queryImage, filename)
+ 
 
     # Compute the histogram with color space passed as argument
     queryHist = cv2.calcHist([queryImageColorSpace], channels, mask, bins, colorRange)

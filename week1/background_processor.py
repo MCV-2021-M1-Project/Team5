@@ -42,7 +42,7 @@ def backgroundRemoval(queryImage, filename):
 
     #Determining thresholds
     threshMinS, threshMaxS = 0, 60
-    threshMinV, threshMaxV = 80, 255
+    threshMinV, threshMaxV = 110, 255
     threshMinA, threshMaxA = 125, 255
     threshMinB, threshMaxB = 125, 255
 
