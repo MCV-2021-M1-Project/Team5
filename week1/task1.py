@@ -8,13 +8,14 @@ import numpy as np
 from matplotlib import pyplot as plt
 import constants as C
 from average_metrics import mapk
+from histogram_processing import getImagesAndHistograms, compareHistograms, getDistances
 
 def parse_args():
     parser = argparse.ArgumentParser(description= 'Arguments to run the task 1 script')
     parser.add_argument('-k', '--k_best', type=int, default=5, help='Number of images to retrieve')
     parser.add_argument('-p', '--path', default='./BBDD', type=str, help='Relative path to image folder')
     parser.add_argument('-c', '--color_space', default="Lab", type=str, help='Color space to use')
-    parser.add_argument('-g', '--gt_results', type=str, default='gt_corresps.pkl', help='Relative path to the query grpund truth results')
+    parser.add_argument('-g', '--gt_results', type=str, default='gt_corresps.pkl', help='Relative path to the query ground truth results')
     parser.add_argument('-r', '--computed_results', type=str, default='result.pkl', help='Relative path to the computed results')
     parser.add_argument('-v', '--validation_metrics', type=bool, default=False, help='Set to true to extract the metrics')
     parser.add_argument('-q', '--query_image', type=str, help='Relative path to the query image')
@@ -23,76 +24,6 @@ def parse_args():
     parser.add_argument('-plt', '--plot_result', type=bool, default=False, help='Set to True to plot results')
     return parser.parse_args()
 
-def getImagesAndHistograms(folderPath, colorSpace):
-    ddbb_images = {}
-    ddbb_histograms = {}
-    
-    for img in filter(lambda el: el.find('.jpg') != -1, os.listdir(folderPath)):
-        filename = folderPath + '/' + img
-        image = cv2.imread(filename)
-        
-        # Denoising images using Gaussian Blur
-        image = cv2.GaussianBlur(image,(3,3), 0)
-        
-        # Changing color space
-        aux = cv2.cvtColor(image, C.OPENCV_COLOR_SPACES[colorSpace][0])
-        
-        ddbb_images[filename] = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) #Storage the image as RGB for later plot
-        channels, mask, bins, colorRange = C.OPENCV_COLOR_SPACES[colorSpace][1:]
-
-        # Compute the histogram with color space passed as argument
-        hist = cv2.calcHist([aux], channels, mask, bins, colorRange)
-        hist = cv2.normalize(hist, hist).flatten()
-        ddbb_histograms[filename] = hist
-        
-    return ddbb_images, ddbb_histograms
-
-def compareHistograms(queryImage, colorSpace, mask_check, k_best, ddbb_histograms):
-    # Denoising query image using Gaussian blur
-    queryImage = cv2.GaussianBlur(queryImage,(3,3), 0)
-    
-    # Change to the color space that is going to be used to compare histograms
-    queryImageColorSpace = cv2.cvtColor(queryImage, C.OPENCV_COLOR_SPACES[colorSpace][0])
-    channels, mask, bins, colorRange = C.OPENCV_COLOR_SPACES[colorSpace][1:]
-    
-    # Apply mask if applicable
-    if mask_check:
-        mask = backgroundRemoval(queryImage)
-
-    # Compute the histogram with color space passed as argument
-    queryHist = cv2.calcHist([queryImageColorSpace], channels, mask, bins, colorRange)
-    queryHist = cv2.normalize(queryHist, queryHist).flatten()
-
-    allResults = {}
-
-    # loop over the comparison methods
-    for (methodName, method) in C.OPENCV_METHODS:
-        # initialize the results dictionary and the sort
-        # direction
-        results = {}
-        reverse = False
-
-        # if we are using the correlation or intersection
-        # method, then sort the results in reverse order
-        if methodName in ("Correlation", "Intersection"):
-            reverse = True
-
-        results = getBestKCoincidences(method, ddbb_histograms, queryHist, k_best)
-
-        # sort the results
-        allResults[methodName] = sorted([(v, k) for (k, v) in results.items()], reverse=reverse)
-
-    return allResults
-
-def getBestKCoincidences(comparisonMethod, baseImageHistograms, queryImageHistogram, k):
-    # loop over the index
-    results = {}
-    for (k, hist) in baseImageHistograms.items():
-        # compute the distance between the two histograms
-        # using the method and update the results dictionary
-        d = cv2.compareHist(queryImageHistogram, hist, comparisonMethod)
-        results[k] = d
-    return results
 
 
 def plotResults(results, kBest, imagesDDBB, queryImage):
@@ -133,66 +64,35 @@ def plotResults(results, kBest, imagesDDBB, queryImage):
     # show the OpenCV methods
     plt.show()
 
-def backgroundRemoval(queryImage):
-    # Converting query image to Grayscale
-    queryImageG = cv2.cvtColor(queryImage, cv2.COLOR_BGR2GRAY)
-    plt.imshow(cv2.cvtColor(queryImageG, cv2.COLOR_GRAY2RGB))
-    plt.axis("off")
-    plt.title("QueryImage")
-    plt.show()
-    
-    # Grayscale histogram
-    queryHistG = cv2.calcHist([queryImageG], [0], None, [256], [0, 256])
-    
-    # Determining threshold (dicarding darker values)
-    predominantColor = np.where(queryHistG == max(queryHistG[100:256]))[0][0]
-    print(predominantColor)
-    threshWidth = 80
-    threshMin, threshMax = predominantColor - (threshWidth/2), predominantColor + (threshWidth/2)
-    
-    # Mask based on threshold
-    _, mask1 = cv2.threshold(queryImageG, threshMax, 255, cv2.THRESH_BINARY)
-    _, mask2 = cv2.threshold(queryImageG, threshMin, 255, cv2.THRESH_BINARY_INV)
-    mask = mask1 + mask2
-
-    plt.imshow(cv2.cvtColor(mask, cv2.COLOR_GRAY2RGB))
-    plt.axis("off")
-    plt.title("Mask")
-    plt.show()
-        
-    # Displaying mask on top of image [TO BE REMOVED]
-    masked = cv2.bitwise_and(queryImage, queryImage, mask=mask)
-    plt.imshow(cv2.cvtColor(masked, cv2.COLOR_BGR2RGB))
-    plt.axis("off")
-    plt.title("MaskedImage")
-    plt.show()
-    
-    return mask
 
 def main():
     args = parse_args()
 
-
     if args.validation_metrics:
+        #read ground truth result (format [[r1],[r2]...])
         with open(args.gt_results, 'rb') as reader:
             gtRes = pickle.load(reader)
 
+        #read ground result to compare (format [[r1],[r2]...])
         with open(args.computed_results, 'rb') as reader:
             computedRes = pickle.load(reader)
         
         resultScore = mapk(gtRes, computedRes, args.k_best)
         print(f'Average precision in {args.computed_results} for k = {args.k_best} is {resultScore}.')
+        
     else:
         ddbb_images, ddbb_histograms = getImagesAndHistograms(args.path, args.color_space)
 
         # query either an image or a folder
         if args.query_image:
             queryImage = cv2.imread(args.query_image)
-            allResults = compareHistograms(queryImage, args.color_space, args.k_best, ddbb_histograms)
+            filename = args.query_image
+            comp = compareHistograms(queryImage, args.color_space, args.mask, args.k_best, ddbb_histograms, filename)
+            allResults = comp[0]
 
             # plot K best coincidences
             if args.plot_result:
-                # chnage the color space to RGB to plot the image later
+                # change the color space to RGB to plot the image later
                 queryImageRGB = cv2.cvtColor(queryImage, cv2.COLOR_BGR2RGB)
                 plotResults(allResults, args.k_best, ddbb_images, queryImageRGB)
 
@@ -207,9 +107,19 @@ def main():
                 n = cv2.imread(img)
                 images.append(n)
 
+            # Initialize result containers
             resultPickle = {}
+            precisionList = []
+            recallList = []
+            F1List = []
+            
+            i = 0
+            
             for queryImage in images:
-                allResults = compareHistograms(queryImage, args.color_space, args.k_best, ddbb_histograms)
+                filename = filenames[i]
+                i += 1
+                comp = compareHistograms(queryImage, args.color_space, args.mask, args.k_best, ddbb_histograms, filename)
+                allResults = comp[0]
                 #Add the best k pictures to the array that is going to be exported as pickle
                 for methodName, method in allResults.items():
                     bestPictures = []
@@ -219,15 +129,37 @@ def main():
                         bestPictures.append(int(Path(name).stem.split('_')[1]))
                     resultPickle[methodName].append(bestPictures)
                 
+                precisionList.append(comp[1])
+                recallList.append(comp[2])
+                F1List.append(comp[3])
+                
                 if args.plot_result:
-                    # chnage the color space to RGB to plot the image later
+                    # change the color space to RGB to plot the image later
                     queryImageRGB = cv2.cvtColor(queryImage, cv2.COLOR_BGR2RGB)
                     plotResults(allResults, args.k_best, ddbb_images, queryImageRGB)
             
+            # Mask evaluation results
+            if args.mask and os.path.exists(args.gt_results):
+                avgPrecision = sum(precisionList)/len(precisionList)
+                print(f'Average precision of masks is {avgPrecision}.')
+                avgRecall = sum(recallList)/len(recallList)
+                print(f'Average recall of masks is {avgRecall}.')
+                avgF1 = sum(F1List)/len(F1List)
+                print(f'Average F1-measure of masks is {avgF1}.')
+
             #Result export
+            gtRes = None
+            if os.path.exists(args.gt_results):
+                with open(args.gt_results, 'rb') as reader:
+                    gtRes = pickle.load(reader)
+
             for name, res in resultPickle.items():
+                if gtRes is not None:
+                    resultScore = mapk(gtRes, res, args.k_best)
+                    print(f'Average precision in {name} for k = {args.k_best} is {resultScore}.')
                 with open(name + '_' + args.color_space + '.pkl', 'wb') as handle:
                     pickle.dump(res, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
 
 
 if __name__ == "__main__":
