@@ -1,5 +1,5 @@
 # Team5 
-## Content Based Image Retrieval
+## M1 Content Based Image Retrieval
 To learn the basic concepts and techniques to build a simple query by example
 retrieval system for finding paintings in a museum image collection.
 
@@ -13,7 +13,7 @@ Image descriptor: image gray-level / color histograms (1D)
 $ task1.py [-p path] [-q query_image] [-f query_image_folder] [-k k_best] [-c color_space] [-plt plot_result]
 ``
 
-arguments:
+Options:
 
   -p, --path            relative path to dataset folder
   
@@ -22,18 +22,24 @@ arguments:
   -f, --query_image_folder  
                         relative path to the folder containing the query images
                         
-optional arguments:
-
-  -h, --help            show this help message and exit
-  
   -k, --k_best          number of images to retrieve
   
   -c, --color_space     color space to use: "Gray", "RGB", "Lab", "HSV", "YCrCb"
   
+  -g, --gt_results      relative path to the query ground truth result
+  
+  -r,--computed_results 
+                        relative path to the computed results
+  
+  -v, --validation_metrics
+                        set to true to extract the metrics
+                        
+  -m, --mask            set True to remove background
+
   -plt, --plot_result   set to True to plot results
 
 ## Example
-Query a single image
+Query a single image and display output
 
 ``
 $ Python3 task1.py -p "./BBDDr" -c "Lab" -q "./qsd1_w1/00000.jpg" -k 5 -c "Lab" -plt True
@@ -42,5 +48,5 @@ $ Python3 task1.py -p "./BBDDr" -c "Lab" -q "./qsd1_w1/00000.jpg" -k 5 -c "Lab" 
 Query images from a folder
 
 ``
-$ Python3 task1.py -p "./BBDD" -f "./qsd1_w1.jpg" -k 5 -c "Lab" -plt True
+$ Python3 task1.py -p "./BBDD" -f "./qsd1_w1.jpg" -k 5 -c "Lab"
 ``
