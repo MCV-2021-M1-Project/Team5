@@ -19,48 +19,34 @@ Install all dependencies
 $ task1.py [-p path] [-q query_image] [-f query_image_folder] [-k k_best] [-c color_space] [-g gt_results] [-r computed_results] [-v validation_metrics] [-m mask] [-plt plot_result]
 ``
 
+```
+
 Options:
 
-  -p, --path            
+  -p, --path            relative path to dataset folder
   
-                        relative path to dataset folder
-  
-  -q, --query_image     
-  
-                        relative path to the query image
+  -q, --query_image     relative path to the query image
   
   -f, --query_image_folder
-  
                         relative path to the folder containing the query images
                         
-  -k, --k_best          
+  -k, --k_best          number of images to retrieve
   
-                        number of images to retrieve
+  -c, --color_space     color space to use: "Gray", "RGB", "Lab", "HSV", "YCrCb"
   
-  -c, --color_space     
-  
-                        color space to use: "Gray", "RGB", "Lab", "HSV", "YCrCb"
-  
-  -g, --gt_results      
-  
-                        relative path to the query ground truth result
+  -g, --gt_results      relative path to the query ground truth result
   
   -r,--computed_results 
-                        
-                        
                         relative path to the computed results (pickle format as specified in the slides)
   
-  -v, --validation_metrics
-                        
+  -v, --validation_metrics 
                         set to true to just extract the map@K score
                         
-  -m, --mask            
-      
-                        set True to remove background from query images
+  -m, --mask            set True to remove background from query images
 
-  -plt, --plot_result   
-  
-                        set to True to plot results
+  -plt, --plot_result   set to True to plot results
+                        
+ ```
 
 ## Example
 Query a single image and display output
