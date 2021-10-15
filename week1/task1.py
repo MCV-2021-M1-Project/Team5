@@ -96,8 +96,10 @@ def compareHistograms(queryImage, colorSpace, mask_check, k_best, ddbb_histogram
 
         # sort the results
         allResults[methodName] = sorted([(v, k) for (k, v) in results.items()], reverse=reverse)
-
-    return allResults, precision, recall, F1_measure
+    if mask_check:
+        return allResults, precision, recall, F1_measure
+    else:
+        return allResults, 1, 1, 1
 
 def getBestKCoincidences(comparisonMethod, baseImageHistograms, queryImageHistogram, k):
     # loop over the index
@@ -105,8 +107,8 @@ def getBestKCoincidences(comparisonMethod, baseImageHistograms, queryImageHistog
     for (k, hist) in baseImageHistograms.items():
         # compute the distance between the two histograms
         # using the method and update the results dictionary
-        d = cv2.compareHist(queryImageHistogram, hist, comparisonMethod)
-        results[k] = d
+        distance = cv2.compareHist(queryImageHistogram, hist, comparisonMethod)
+        results[k] = distance
     return results
 
 def plotResults(results, kBest, imagesDDBB, queryImage):
@@ -147,6 +149,32 @@ def plotResults(results, kBest, imagesDDBB, queryImage):
     # show the OpenCV methods
     plt.show()
 
+def intersect_matrices(m1, m2):
+        if not (m1.shape == m2.shape):
+            return False
+        intersect = np.where((m1 == m2), m1, 0)
+        return intersect
+
+
+def evaluateMask(gtMask, computedMask):    
+    #Compute the score for a given mask
+    # gtMask and computedMask size have to be the same
+
+    truePositive = np.count_nonzero(intersect_matrices(gtMask, computedMask))
+    falseNegative = np.count_nonzero(intersect_matrices(gtMask, cv2.bitwise_not(computedMask)))
+    falsePositive = np.count_nonzero(intersect_matrices(cv2.bitwise_not(gtMask), computedMask))
+    # trueNegative = np.count_nonzero(intersect_matrices(cv2.bitwise_not(gtMask), cv2.bitwise_not(computedMask)))
+    
+    precision = truePositive / (truePositive + falsePositive)
+    #print('Precision: ' + '{:.2f}'.format(precision))
+    recall = truePositive / (truePositive + falseNegative)
+    #print('Recall: ' + '{:.2f}'.format(recall))
+    F1_measure = 2 * ((precision * recall) / (precision + recall))
+    #print('F1-measure: ' + '{:.2f}'.format(F1_measure))
+    return precision, recall, F1_measure
+
+
+
 def backgroundRemoval(queryImage, filename):
     #Converting image to HSV and Lab
     queryImageHSV = cv2.cvtColor(queryImage, cv2.COLOR_BGR2HSV)
@@ -177,11 +205,6 @@ def backgroundRemoval(queryImage, filename):
     maskB = mask1B + mask2B
 
     #Combining masks into a single mask
-    def intersect_matrices(m1, m2):
-        if not (m1.shape == m2.shape):
-            return False
-        intersect = np.where((m1 == m2), m1, 0)
-        return intersect
     mask = cv2.bitwise_not(intersect_matrices(cv2.bitwise_not(maskS), cv2.bitwise_not(maskV)))
     mask = cv2.bitwise_not(intersect_matrices(cv2.bitwise_not(mask), cv2.bitwise_not(maskA)))
     mask = cv2.bitwise_not(intersect_matrices(cv2.bitwise_not(mask), cv2.bitwise_not(maskB)))
@@ -189,45 +212,18 @@ def backgroundRemoval(queryImage, filename):
     # Exporting mask as .png file
     cv2.imwrite(os.path.basename(filename).replace('jpg', 'png'), mask)
 
-    '''
-    # Displaying mask
-    plt.imshow(cv2.cvtColor(mask, cv2.COLOR_GRAY2RGB))
-    plt.axis("off")
-    plt.title("Mask")
-    plt.show()
-    
-    # Displaying mask on top of image [TO BE REMOVED]
-    masked = cv2.bitwise_and(queryImage, queryImage, mask=mask)
-    plt.imshow(cv2.cvtColor(masked, cv2.COLOR_BGR2RGB))
-    plt.axis("off")
-    plt.title("MaskedImage")
-    plt.show()
-    '''
     
     # Mask evaluation
     annotationPath = filename.replace('jpg', 'png')
-    annotation = cv2.imread(annotationPath)
-    annotation = cv2.cvtColor(annotation, cv2.COLOR_BGR2GRAY)
     
-    def intersect_matrices(m1, m2):
-        if not (m1.shape == m2.shape):
-            return False
-        intersect = np.where((m1 == m2), m1, 0)
-        return intersect
-    
-    truePositive = np.count_nonzero(intersect_matrices(annotation, mask))
-    falseNegative = np.count_nonzero(intersect_matrices(annotation, cv2.bitwise_not(mask)))
-    falsePositive = np.count_nonzero(intersect_matrices(cv2.bitwise_not(annotation), mask))
-    trueNegative = np.count_nonzero(intersect_matrices(cv2.bitwise_not(annotation), cv2.bitwise_not(mask)))
-    
-    precision = truePositive / (truePositive + falsePositive)
-    #print('Precision: ' + '{:.2f}'.format(precision))
-    recall = truePositive / (truePositive + falseNegative)
-    #print('Recall: ' + '{:.2f}'.format(recall))
-    F1_measure = 2 * ((precision * recall) / (precision + recall))
-    #print('F1-measure: ' + '{:.2f}'.format(F1_measure))
-    
-    return mask, precision, recall, F1_measure
+    if os.path.exists(annotationPath):
+        annotation = cv2.imread(annotationPath)
+        annotation = cv2.cvtColor(annotation, cv2.COLOR_BGR2GRAY)
+        precision, recall, F1_measure = evaluateMask(annotation, mask)
+        
+        return mask, precision, recall, F1_measure
+    else:
+        return mask, -1, -1, -1
 
 def main():
     args = parse_args()
@@ -301,22 +297,27 @@ def main():
                     plotResults(allResults, args.k_best, ddbb_images, queryImageRGB)
             
             # Mask evaluation results
-            avgPrecision = sum(precisionList)/len(precisionList)
-            print(f'Average precision of masks is {avgPrecision}.')
-            avgRecall = sum(recallList)/len(recallList)
-            print(f'Average recall of masks is {avgRecall}.')
-            avgF1 = sum(F1List)/len(F1List)
-            print(f'Average F1-measure of masks is {avgF1}.')
+            if args.mask and os.path.exists(args.gt_results):
+                avgPrecision = sum(precisionList)/len(precisionList)
+                print(f'Average precision of masks is {avgPrecision}.')
+                avgRecall = sum(recallList)/len(recallList)
+                print(f'Average recall of masks is {avgRecall}.')
+                avgF1 = sum(F1List)/len(F1List)
+                print(f'Average F1-measure of masks is {avgF1}.')
 
             #Result export
-            with open(args.gt_results, 'rb') as reader:
-                 gtRes = pickle.load(reader)
+            gtRes = None
+            if os.path.exists(args.gt_results):
+                with open(args.gt_results, 'rb') as reader:
+                    gtRes = pickle.load(reader)
 
             for name, res in resultPickle.items():
-                resultScore = mapk(gtRes, res, args.k_best)
-                print(f'Average precision in {name} for k = {args.k_best} is {resultScore}.')
+                if gtRes is not None:
+                    resultScore = mapk(gtRes, res, args.k_best)
+                    print(f'Average precision in {name} for k = {args.k_best} is {resultScore}.')
                 with open(name + '_' + args.color_space + '.pkl', 'wb') as handle:
                     pickle.dump(res, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
 
 
 if __name__ == "__main__":

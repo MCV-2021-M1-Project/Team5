@@ -29,14 +29,19 @@ Options:
   -g, --gt_results      relative path to the query ground truth result
   
   -r,--computed_results 
-                        relative path to the computed results
+                        relative path to the computed results (pickle format as specified in the slides)
   
   -v, --validation_metrics
-                        set to true to extract the metrics
+                        set to true to just extract the map@K score
                         
-  -m, --mask            set True to remove background
+  -m, --mask            set True to remove background from query images
 
   -plt, --plot_result   set to True to plot results
+
+### Output
+After running the script in with the folder argument set, five pkl will be generated
+following the format specfied in the slides. Each file correspond to the result for a different similarity/distance method in the color space passed as argument. The name format is:
+  - DistanceMetric_ColorSpace.pkl
 
 ## Example
 Query a single image and display output
@@ -49,4 +54,11 @@ Query images from a folder
 
 ``
 $ Python3 task1.py -p "./BBDD" -f "./qsd1_w1.jpg" -k 5 -c "Lab"
+``
+
+## Testing an especific pickle file
+Print the map@k for the passed result file
+
+``
+$ Python3 task1.py -v True -g path/to/gt/results.pkl -r path/to/computed/results.pkl -k <number_to_test>
 ``
