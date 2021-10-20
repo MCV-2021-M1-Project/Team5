@@ -5,8 +5,9 @@ OPENCV_METHODS = (
     ("Chi-Squared", cv2.HISTCMP_CHISQR),
     ("Intersection", cv2.HISTCMP_INTERSECT),
     ("Hellinger", cv2.HISTCMP_BHATTACHARYYA),
-    # ("Kullback-Leibler", cv2.HISTCMP_KL_DIV), # Not very useful
-    ("Alternative-Chi-Squared", cv2.HISTCMP_CHISQR_ALT))
+    #("Kullback-Leibler", cv2.HISTCMP_KL_DIV), # Not very useful
+    ("Alternative-Chi-Squared", cv2.HISTCMP_CHISQR_ALT)
+    )
 
 OPENCV_COLOR_SPACES =  {
     "Gray": [cv2.COLOR_BGR2GRAY, [0], None, [256], [0,256]],

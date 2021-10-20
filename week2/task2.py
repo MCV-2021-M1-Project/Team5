@@ -8,11 +8,12 @@ import numpy as np
 from matplotlib import pyplot as plt
 import constants as C
 from average_metrics import mapk
-from histogram_processing import getImagesAndHistograms, compareHistograms, getDistances
+from histogram_processing import getImagesAndHistograms, compareHistograms, getDistances, loadAllImages
 
 def parse_args():
     parser = argparse.ArgumentParser(description= 'Arguments to run the task 1 script')
     parser.add_argument('-k', '--k_best', type=int, default=5, help='Number of images to retrieve')
+    parser.add_argument('-s', '--split', type=int, default=1, help='Before computing the histograms the image will be splited in SxS patches')
     parser.add_argument('-p', '--path', default='./BBDD', type=str, help='Relative path to image folder')
     parser.add_argument('-c', '--color_space', default="Lab", type=str, help='Color space to use')
     parser.add_argument('-g', '--gt_results', type=str, default='gt_corresps.pkl', help='Relative path to the query ground truth results')
@@ -81,13 +82,24 @@ def main():
         print(f'Average precision in {args.computed_results} for k = {args.k_best} is {resultScore}.')
         
     else:
-        ddbb_images, ddbb_histograms = getImagesAndHistograms(args.path, args.color_space)
+        histogramsFile = f'ddbb_histograms_{args.color_space}_segments{args.split}.pkl'
+        if os.path.exists(histogramsFile):
+            #Load histograms for DB, they are always the same for a space color and split level
+            with open(histogramsFile, 'rb') as reader:
+                print('Load existing histograms...')
+                ddbb_histograms = pickle.load(reader)
+            ddbb_images = loadAllImages(args.path)
+        else:
+            ddbb_images, ddbb_histograms = getImagesAndHistograms(args.path, args.color_space, args.split)
+            #Save histograms for next time
+            with open(histogramsFile, 'wb') as handle:
+                pickle.dump(ddbb_histograms, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
         # query either an image or a folder
         if args.query_image:
             queryImage = cv2.imread(args.query_image)
             filename = args.query_image
-            comp = compareHistograms(queryImage, args.color_space, args.mask, args.k_best, ddbb_histograms, filename)
+            comp = compareHistograms(queryImage, args.color_space, args.mask, args.k_best, ddbb_histograms, filename, args.split)
             allResults = comp[0]
 
             # plot K best coincidences
@@ -118,7 +130,7 @@ def main():
             for queryImage in images:
                 filename = filenames[i]
                 i += 1
-                comp = compareHistograms(queryImage, args.color_space, args.mask, args.k_best, ddbb_histograms, filename)
+                comp = compareHistograms(queryImage, args.color_space, args.mask, args.k_best, ddbb_histograms, filename, args.split)
                 allResults = comp[0]
                 #Add the best k pictures to the array that is going to be exported as pickle
                 for methodName, method in allResults.items():
@@ -157,8 +169,8 @@ def main():
                 if gtRes is not None:
                     resultScore = mapk(gtRes, res, args.k_best)
                     print(f'Average precision in {name} for k = {args.k_best} is {resultScore}.')
-                with open(name + '_' + args.color_space + '.pkl', 'wb') as handle:
-                    pickle.dump(res, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                # with open(name + '_' + args.color_space + '.pkl', 'wb') as handle:
+                #     pickle.dump(res, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 

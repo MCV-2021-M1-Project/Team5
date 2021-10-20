@@ -1,11 +1,24 @@
 import os
 import cv2
+import numpy as np
 import constants as C
 from average_metrics import mapk
 from background_processor import backgroundRemoval
 
+def loadAllImages(folderPath):
+    
+    ddbb_images = {}
+    
+    for img in filter(lambda el: el.find('.jpg') != -1, os.listdir(folderPath)):
+        filename = folderPath + '/' + img
+        image = cv2.imread(filename)
 
-def getImagesAndHistograms(folderPath, colorSpace):
+        # Store the image as RGB for later plot
+        ddbb_images[filename] = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+    return ddbb_images
+
+def getImagesAndHistograms(folderPath, colorSpace, sections = 1):
     """
     Returns a dict that contain all the jpg images from folder path, and 
     other one with the corresponding histograms for each image
@@ -40,16 +53,31 @@ def getImagesAndHistograms(folderPath, colorSpace):
         ddbb_images[filename] = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         channels, mask, bins, colorRange = C.OPENCV_COLOR_SPACES[colorSpace][1:]
 
+        hist = None
+        if sections <= 1:
         # Compute the histogram with color space passed as argument
-        hist = cv2.calcHist([aux], channels, mask, bins, colorRange)
-        hist = cv2.normalize(hist, hist).flatten()
+            hist = cv2.calcHist([aux], channels, mask, bins, colorRange)
+            hist = cv2.normalize(hist, hist).flatten()
+        else:
+            sectionsMask = np.zeros((aux.shape[0], aux.shape[1]), dtype="uint8")
+            sH = aux.shape[0] // sections
+            sW = aux.shape[1] // sections
+            auxHists = []
+            for row in range(sections):
+                for column in range(sections):
+                    sectionsMask[sH*row:(sH*row + sH),sW*column:(sW*column + sW)] = 255
+                    auxhist = cv2.calcHist([aux], channels, sectionsMask, bins, colorRange)
+                    auxHists.extend(cv2.normalize(auxhist, auxhist).flatten())
+                    sectionsMask[:,:] = 0
+            hist = auxHists
+
         ddbb_histograms[filename] = hist
         
     return ddbb_images, ddbb_histograms
 
 
 
-def compareHistograms(queryImage, colorSpace, mask_check, k_best, ddbb_histograms, filename):
+def compareHistograms(queryImage, colorSpace, mask_check, k_best, ddbb_histograms, filename, sections = 1):
     """
     Compare the histograms of ddbb_histograms with the one for queryImage and returns
     a dictionary of diferent methods with the k_best most similar images
@@ -86,8 +114,26 @@ def compareHistograms(queryImage, colorSpace, mask_check, k_best, ddbb_histogram
  
 
     # Compute the histogram with color space passed as argument
-    queryHist = cv2.calcHist([queryImageColorSpace], channels, mask, bins, colorRange)
-    queryHist = cv2.normalize(queryHist, queryHist).flatten()
+    queryHist = None
+    if sections <= 1:
+        # Compute the histogram with color space passed as argument
+            queryHist = cv2.calcHist([queryImageColorSpace], channels, mask, bins, colorRange)
+            queryHist = cv2.normalize(queryHist, queryHist).flatten()
+    else:
+        sectionsMask = np.zeros((queryImageColorSpace.shape[0], queryImageColorSpace.shape[1]), dtype="uint8")
+        sH = queryImageColorSpace.shape[0] // sections
+        sW = queryImageColorSpace.shape[1] // sections
+        auxHists = []
+        print(f'For query image {filename} the shape is {queryImageColorSpace.shape} and its sections are {sH}, {sW}')
+        for row in range(sections):
+            for column in range(sections):
+                # print(f'Segment {row},{column}: {sH*row}:{(sH*row + sH)} {sW*column}:{(sW*column + sW)}')
+                sectionsMask[sH*row:(sH*row + sH),sW*column:(sW*column + sW)] = 255
+                auxhist = cv2.calcHist([queryImageColorSpace], channels, sectionsMask, bins, colorRange)
+                auxHists.extend(cv2.normalize(auxhist, auxhist).flatten())
+                sectionsMask[:,:] = 0
+        queryHist = auxHists
+
 
     allResults = {}
 
@@ -119,6 +165,17 @@ def getDistances(comparisonMethod, baseImageHistograms, queryImageHistogram):
     for (k, hist) in baseImageHistograms.items():
         # compute the distance between the two histograms
         # using the method and update the results dictionary
-        distance = cv2.compareHist(queryImageHistogram, hist, comparisonMethod)
+        #print(f'Type {type(queryImageHistogram)}, shape {np.shape(queryImageHistogram)}')
+        query = cv2.UMat(np.array(queryImageHistogram, dtype=np.float32))
+        histBase = cv2.UMat(np.array(hist, dtype=np.float32))
+        distance = cv2.compareHist(query, histBase, comparisonMethod)
+        # distance = chi2_distance(hist, queryImageHistogram)
         results[k] = distance
     return results
+
+def chi2_distance(histA, histB, eps = 1e-10):
+		# compute the chi-squared distance
+		d = 0.5 * np.sum([((a - b) ** 2) / (a + b + eps)
+			for (a, b) in zip(histA, histB)])
+		# return the chi-squared distance
+		return d
