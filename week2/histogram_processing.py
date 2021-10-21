@@ -4,6 +4,7 @@ import numpy as np
 import constants as C
 from average_metrics import mapk
 from background_processor import backgroundRemoval, intersect_matrices
+import matplotlib.pyplot as plt
 
 def getHistogram(image, channels, mask, bins, colorRange, sections = 1):
     """
@@ -30,6 +31,39 @@ def getHistogram(image, channels, mask, bins, colorRange, sections = 1):
                 sectionsMask[:,:] = 0
         return auxHists
 
+def getHistogram2(image, channels, mask, bins, colorRange, sections = 1):
+    """
+    Compute the histogram for a given image and with the specified arguments for the histogram.
+    If sections is bigger than 1 the image will be splited into sections*sections before computing.
+    """
+    if sections <= 1:
+        # Compute the histogram with color space passed as argument
+            queryHist = cv2.calcHist([image], channels, mask, bins, colorRange)
+            return queryHist
+    else:
+        sectionsMask = np.zeros((image.shape[0], image.shape[1]), dtype="uint8")
+        sH = image.shape[0] // sections
+        sW = image.shape[1] // sections
+        auxHists = []
+        for row in range(sections):
+            for column in range(sections):
+                sectionsMask[sH*row:(sH*row + sH),sW*column:(sW*column + sW)] = 255
+                if mask is not None:
+                    sectionsMask = intersect_matrices(sectionsMask, mask)
+                auxhist = cv2.calcHist([image], channels, sectionsMask, bins, colorRange)
+                sectionsMask[:,:] = 0
+        return auxHists
+
+def plotHistogram(hist):
+    # plot the histogram
+    plt.figure()
+    plt.title("Histogram")
+    plt.xlabel("Bins")
+    plt.ylabel("% of Pixels")
+    plt.plot(hist)
+    plt.xlim([0, 256])
+
+    plt.show()
 
 def loadAllImages(folderPath):
     
