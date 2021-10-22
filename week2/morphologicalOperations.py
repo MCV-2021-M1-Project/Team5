@@ -7,7 +7,7 @@ import pickle
 import numpy as np
 import constants as C
 from average_metrics import bbox_iou
-from histogram_processing import getHistogram2, plotHistogram
+#from histogram_processing import getHistogram2, plotHistogram
 
 def MSERImage(image, gray):
 	# # detect MSER keypoints in the image
@@ -112,6 +112,7 @@ def convertBox2(box):
 	try1 = box[1][1]
 	return [blx, bly, trx, try1]
 
+'''
 def getTextBox(image):
 	gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
@@ -214,3 +215,4 @@ def getTextBoundingBox():
 		image = cv2.imread(args.image)
 		mask = getTextBox(image)
 		x, y, w, h = maskToRect(image, mask)
+'''
