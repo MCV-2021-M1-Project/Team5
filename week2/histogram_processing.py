@@ -101,7 +101,7 @@ def getImagesAndHistograms(folderPath, colorSpace, sections = 1):
         ddbb_images[filename] = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         channels, mask, bins, colorRange = C.OPENCV_COLOR_SPACES[colorSpace][1:]
 
-        hist = getHistogram(image, channels, mask, bins, colorRange, sections)
+        hist = getHistogram(aux, channels, mask, bins, colorRange, sections)
 
         ddbb_histograms[filename] = hist
         
