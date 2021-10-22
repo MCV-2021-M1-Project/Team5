@@ -106,18 +106,18 @@ def blackHat(gray, kernel_size):
 	return blackhat
 
 def convertBox(x, y, w, h):
-	tly = y + h
-	tlx = x
-	bry = y
-	brx = x + w
-	return [tly, tlx, bry, brx]
+	blx = x
+	bly = y
+	trx = x + w
+	try1 = y + h
+	return [blx, bly, trx, try1]
 
 def convertBox2(box):
-	tly = box[1][1]
-	tlx = box[0][0]
-	bry = box[0][1]
-	brx = box[2][0]
-	return [tly, tlx, bry, brx]
+	blx = box[0][0]
+	bly = box[0][1]
+	trx = box[2][0]
+	try1 = box[1][1]
+	return [blx, bly, trx, try1]
 
 def getTextBox(image):
 	gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -174,44 +174,43 @@ def maskToRect(image, mask):
 	cv2.waitKey(0)
 	return x, y, w, h
 
+def getTextBoundingBox():
+	with open("/Users/brian/Desktop/Computer Vision/M1/Project/qsd1_w2/text_boxes.pkl", 'rb') as reader:
+		gt_boxes = pickle.load(reader)
 
-with open("/Users/brian/Desktop/Computer Vision/M1/Project/qsd1_w2/text_boxes.pkl", 'rb') as reader:
-	gt_boxes = pickle.load(reader)
+	# print(gt_boxes[0][0][0])
+	# print(len(gt_boxes))
+	# print(type(gt_boxes))
 
-# print(gt_boxes[0][0][0])
-# print(len(gt_boxes))
-# print(type(gt_boxes))
+	result = []
 
+	# load the image, convert it to grayscale, and display it to our
+	# screen
+	if args.folder is not None:
+		filenames = [img for img in glob.glob(args.folder + "/*" + ".jpg")]
+		filenames.sort()
 
-result = []
+		# Load images to a list
+		images = []
+		for i, img in enumerate(filenames):
+			image = cv2.imread(img)
+			mask = getTextBox(image)
+			x, y, w, h = maskToRect(image, mask)
+			box = convertBox(x, y, w, h)
 
-# load the image, convert it to grayscale, and display it to our
-# screen
-if args.folder is not None:
-	filenames = [img for img in glob.glob(args.folder + "/*"+ ".jpg")]
-	filenames.sort()
+			gt_box = convertBox2(gt_boxes[i][0])
+			iou = bbox_iou(box, gt_box)
 
-	# Load images to a list
-	images = []
-	for i, img in enumerate(filenames):
-		image = cv2.imread(img)
+			print("Painting:", i)
+			# print(gt_boxes[i][0])
+			print(box)
+			print(gt_box)
+			print(iou)
+			result.append(iou)
+
+		print(sum(result) / len(result))
+
+	else:
+		image = cv2.imread(args.image)
 		mask = getTextBox(image)
 		x, y, w, h = maskToRect(image, mask)
-		box = convertBox(x, y, w, h)
-
-		gt_box = convertBox2(gt_boxes[i][0])
-		iou = bbox_iou(box, gt_box)
-
-		print("Painting:", i)
-		# print(gt_boxes[i][0])
-		print(box)
-		print(gt_box)
-		print(iou)
-		result.append(iou)
-
-	print(sum(result) / len(result))
-
-else:
-	image = cv2.imread(args.image)
-	mask = getTextBox(image)
-	x, y, w, h = maskToRect(image, mask)

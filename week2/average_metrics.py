@@ -89,3 +89,8 @@ def bbox_iou(bboxA, bboxB):
     
     # return the intersection over union value
     return iou
+
+# boxA = [10,10,0,0]
+# boxB= [9,9,0,0]
+# iou = bbox_iou(boxA,boxB)
+# print(iou)
