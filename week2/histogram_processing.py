@@ -1,17 +1,14 @@
 import os
 import cv2
+from matplotlib import pyplot as plt
 import numpy as np
 import constants as C
 from average_metrics import mapk
-from background_processor import backgroundRemoval, intersect_matrices
+from background_processor import backgroundRemoval, intersect_matrices, findElementsInMask
 
-def getHistogram(image, channels, mask, bins, colorRange, sections = 1):
-    """
-    Compute the histogram for a given image and with the specified arguments for the histogram.
-    If sections is bigger than 1 the image will be splited into sections*sections before computing.
-    """
+def getSingleHistogram(image, channels, mask, bins, colorRange, sections = 1):
     if sections <= 1:
-        # Compute the histogram with color space passed as argument
+            # Compute the histogram with color space passed as argument
             queryHist = cv2.calcHist([image], channels, mask, bins, colorRange)
             queryHist = cv2.normalize(queryHist, queryHist).flatten()
             return queryHist
@@ -30,7 +27,32 @@ def getHistogram(image, channels, mask, bins, colorRange, sections = 1):
                 sectionsMask[:,:] = 0
         return auxHists
 
+def getHistogram(image, channels, mask, bins, colorRange, sections = 1):
+    """
+    Compute the histogram for a given image and with the specified arguments for the histogram.
+    If sections is bigger than 1 the image will be splited into sections*sections before computing.
+    """
+    #Check the mask to figure out if there are more than one pictures in the image
+    if mask is None:
+        return getSingleHistogram(image, channels, mask, bins, colorRange, sections)
+    else:
+        elems, start, end = findElementsInMask(mask)
+        if elems > 1:
+            histograms = []
+            for num in range(elems):
+                auxMask = np.zeros(mask.shape, dtype="uint8")
+                # print(f'Rango {start[num][0]}:{end[num][0]} - {start[num][1]}:{end[num][1]}')
+                auxMask[start[num][0]:end[num][0],start[num][1]:end[num][1]] = 255
+                # plt.imshow(auxMask, cmap='gray')
+                # plt.show()
+                # cv2.waitKey(0)
+                histograms.append(getSingleHistogram(image, channels, auxMask, bins, colorRange, sections))
+            return histograms
+        else:
+            return getSingleHistogram(image, channels, mask, bins, colorRange, sections)
+    
 
+        
 def loadAllImages(folderPath):
     
     ddbb_images = {}
@@ -110,7 +132,11 @@ def compareHistograms(queryImage, colorSpace, mask_check, k_best, ddbb_histogram
     # Apply mask if applicable
     backgroundMask = None
     if mask_check:
-        backgroundMask, precision, recall, F1_measure = backgroundRemoval(queryImage, filename)
+        # backgroundMask, precision, recall, F1_measure = backgroundRemoval(queryImage, filename)
+        backgroundMask = cv2.imread(filename.replace('jpg','png'), cv2.IMREAD_GRAYSCALE)
+        precision = -1
+        recall = -1
+        F1_measure = -1
 
     # Equalizing Saturation and Lightness via HSV
     queryImage = cv2.cvtColor(queryImage, cv2.COLOR_BGR2HSV)
@@ -126,25 +152,36 @@ def compareHistograms(queryImage, colorSpace, mask_check, k_best, ddbb_histogram
 
     # Compute the histogram with color space passed as argument
     queryHist = getHistogram(queryImageColorSpace, channels, backgroundMask, bins, colorRange, sections)
+    
+    shapeQueryHist = np.shape(queryHist)
 
-    allResults = {}
+    allResults = None
+    if len(shapeQueryHist) > 1:
+        allResults = []
+        for i in range(shapeQueryHist[0]):
+            allResults.append({})
+    else:
+        allResults = {}
 
     # loop over the comparison methods
     for (methodName, method) in C.OPENCV_METHODS:
         # initialize the results dictionary and the sort
         # direction
-        results = {}
         reverse = False
 
         # if we are using the correlation or intersection
         # method, then sort the results in reverse order
         if methodName in ("Correlation", "Intersection"):
             reverse = True
-
-        results = getDistances(method, ddbb_histograms, queryHist)
-
+        if len(shapeQueryHist) > 1:
+            for idx, hist in enumerate(queryHist):
+                results = getDistances(method, ddbb_histograms, hist)
+                allResults[idx][methodName] = sorted([(v, k) for (k, v) in results.items()], reverse=reverse)
+        else:
+            results = getDistances(method, ddbb_histograms, queryHist)
+            allResults[methodName] = sorted([(v, k) for (k, v) in results.items()], reverse=reverse)
         # sort the results
-        allResults[methodName] = sorted([(v, k) for (k, v) in results.items()], reverse=reverse)
+        
     if mask_check:
         return allResults, precision, recall, F1_measure
     else:
@@ -158,9 +195,12 @@ def getDistances(comparisonMethod, baseImageHistograms, queryImageHistogram):
         # compute the distance between the two histograms
         # using the method and update the results dictionary
         #print(f'Type {type(queryImageHistogram)}, shape {np.shape(queryImageHistogram)}')
-        query = cv2.UMat(np.array(queryImageHistogram, dtype=np.float32))
-        histBase = cv2.UMat(np.array(hist, dtype=np.float32))
-        distance = cv2.compareHist(query, histBase, comparisonMethod)
+        if not isinstance(queryImageHistogram, np.ndarray):
+            query = cv2.UMat(np.array(queryImageHistogram, dtype=np.float32))
+            histBase = cv2.UMat(np.array(hist, dtype=np.float32))
+            distance = cv2.compareHist(query, histBase, comparisonMethod)
+        else:
+            distance = cv2.compareHist(queryImageHistogram, hist, comparisonMethod)
         # distance = chi2_distance(hist, queryImageHistogram)
         results[k] = distance
     return results
