@@ -9,13 +9,6 @@ import constants as C
 from average_metrics import bbox_iou
 from histogram_processing import getHistogram2, plotHistogram
 
-# construct the argument parser and parse the arguments
-ap = argparse.ArgumentParser()
-ap.add_argument("-i", "--image", help="path to input image")
-ap.add_argument("-f", "--folder", help="path to input images")
-# ap.add_argument("-op", "--operation", tyr=str, required=True, help="morphological operation to use")
-args, leftovers = ap.parse_known_args()
-
 def MSERImage(image, gray):
 	# # detect MSER keypoints in the image
 	# detector = cv2.MSER_create()
@@ -175,6 +168,13 @@ def maskToRect(image, mask):
 	return x, y, w, h
 
 def getTextBoundingBox():
+	# construct the argument parser and parse the arguments
+	ap = argparse.ArgumentParser()
+	ap.add_argument("-i", "--image", help="path to input image")
+	ap.add_argument("-f", "--folder", help="path to input images")
+	# ap.add_argument("-op", "--operation", tyr=str, required=True, help="morphological operation to use")
+	args, leftovers = ap.parse_known_args()
+
 	with open("/Users/brian/Desktop/Computer Vision/M1/Project/qsd1_w2/text_boxes.pkl", 'rb') as reader:
 		gt_boxes = pickle.load(reader)
 
