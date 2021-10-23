@@ -48,7 +48,8 @@ def main():
             with open(histogramsFile, 'rb') as reader:
                 print('Load existing histograms...')
                 ddbb_histograms = pickle.load(reader)
-            ddbb_images = loadAllImages(args.path)
+            if args.plot_result:
+                ddbb_images = loadAllImages(args.path)
         else:
             ddbb_images, ddbb_histograms = getImagesAndHistograms(args.path, args.color_space, args.split)
             #Save histograms for next time
@@ -93,13 +94,19 @@ def main():
                 comp = compareHistograms(queryImage, args.color_space, args.mask, args.k_best, ddbb_histograms, filename, args.split)
                 allResults = comp[0]
                 #Add the best k pictures to the array that is going to be exported as pickle
-                for methodName, method in allResults.items():
+                if not isinstance(allResults, list):
+                    allResults = [allResults]
+                
+                for methodName, method in C.OPENCV_METHODS:
                     bestPictures = []
-                    if methodName not in resultPickle:
-                        resultPickle[methodName] = []
-                    for score, name in allResults[methodName][0:args.k_best]:
-                        bestPictures.append(int(Path(name).stem.split('_')[1]))
-                    resultPickle[methodName].append(bestPictures)
+                    bestAux = []
+                    for results in allResults:
+                        if methodName not in resultPickle:
+                            resultPickle[methodName] = []
+                        for score, name in results[methodName][0:args.k_best]:
+                            bestAux.append(int(Path(name).stem.split('_')[1]))
+                    bestPictures.append(bestAux)
+                    resultPickle[methodName].append(bestAux)
                 
                 precisionList.append(comp[1])
                 recallList.append(comp[2])
@@ -120,6 +127,7 @@ def main():
                 print(f'Average F1-measure of masks is {avgF1}.')
 
             #Result export
+            print('Resultados de Hellinger:', resultPickle['Hellinger'])
             gtRes = None
             if os.path.exists(args.gt_results):
                 with open(args.gt_results, 'rb') as reader:

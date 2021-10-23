@@ -1,11 +1,13 @@
 import os
 import cv2
+from matplotlib import pyplot as plt
 import constants as C
 from average_metrics import mapk
 import numpy as np
-from matplotlib import pyplot as plt
+import math
 import statistics as stat
 import morphologicalOperations as mo
+
 
 
 def intersect_matrices(m1, m2):
@@ -30,6 +32,48 @@ def evaluateMask(gtMask, computedMask):
     F1_measure = 2 * ((precision * recall) / (precision + recall))
     #print('F1-measure: ' + '{:.2f}'.format(F1_measure))
     return precision, recall, F1_measure
+
+
+def findElementsInMask(mask):
+    # Structuring element
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
+
+    # Get only the contours of the masks
+    erosion = cv2.erode(mask, kernel, iterations = 1)
+    dilation = cv2.dilate(mask, kernel, iterations = 1)
+    gradient1 = dilation - erosion
+
+    #get the start corners
+    kernel[:,:] = 0; kernel[1,1] = 1; kernel[2,1] = 1; kernel[1,2] = 1
+    startCorner = cv2.erode(gradient1, kernel, iterations = 3)
+    start = np.argwhere(startCorner == 255)
+
+    #get the end corners
+    kernel[:,:] = 0; kernel[1,1] = 1; kernel[0,1] = 1; kernel[1,0] = 1
+    endCorner = cv2.erode(gradient1, kernel, iterations = 3)
+    endAux = np.argwhere(endCorner == 255)
+
+    #make sure each end corner is at the correct pos
+    numberElements = len(start)
+    # print(start)
+    if numberElements > 1:
+        end = [[]] * len(start)
+        for corner in endAux:
+            distances = [math.hypot(point[0]-corner[0], point[1]-corner[1]) for point in start]
+            smallerPoint = [(point[0] < corner[0] and point[1] < corner[1]) for point in start]
+            union = list(map(lambda d, s: d if s else math.inf ,distances,smallerPoint))
+            # print('Corner',corner,'distances',distances,'smaller',smallerPoint,'union', union)
+            end[np.argmin(union)] = corner
+    else:
+        end = endAux
+
+    
+    # print(end)
+    # print('Forma del gradiente es',np.shape(gradient1),'Esquinas: ',start)
+    # cv2.imshow('corners',startCorner)
+    # cv2.waitKey(0)
+    
+    return numberElements, start, end
 
 def cleanerV(mask):
     i = 1 #Column iterator
@@ -72,6 +116,7 @@ def cleanerH(mask):
         i = 0
         j += 1
     return mask
+
 
 def backgroundRemoval(queryImage, filename):
     #Converting image to HSV and Lab
