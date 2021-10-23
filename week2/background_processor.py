@@ -222,7 +222,7 @@ def backgroundRemoval(queryImage, filename):
     maskFinal = maskOpening[round(maskClean.shape[0]*0.2):-round(maskClean.shape[0]*0.2), round(maskClean.shape[1]*0.2):-round(maskClean.shape[1]*0.2)]
 
     #Exporting mask as .png file
-    cv2.imwrite(os.path.basename(filename).replace('jpg', 'png'), mask)
+    cv2.imwrite(os.path.basename(filename).replace('jpg', 'png'), maskFinal)
 
     # plt.imshow(cv2.cvtColor(mask, cv2.COLOR_BGR2RGB))
     # plt.axis("off")
