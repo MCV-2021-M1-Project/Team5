@@ -129,12 +129,6 @@ def backgroundRemoval(queryImage, filename):
 
     #Combining masks into a single mask
     mask = cv2.bitwise_not(intersect_matrices(cv2.bitwise_not(maskS), cv2.bitwise_not(maskV)))
-        
-    #Initial cleaning using morphology (opening)
-    #kernelSize = (round(mask.shape[0]/24), round(mask.shape[1]/40))
-    #maskClosing = mo.closingImage(mask, kernelSize)
-    #kernelSize = (round(mask.shape[0]/5), round(mask.shape[1]/15))
-    #maskOpening = mo.openingImage(maskClosing, kernelSize)
     
     #Ensuring there are no open regions on edges (10px minimum)
     mask[0:10, :], mask[-10:, :], mask[:, 0:10], mask[:, -10:] = 0, 0, 0, 0
