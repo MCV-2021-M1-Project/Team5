@@ -35,6 +35,20 @@ def evaluateMask(gtMask, computedMask):
 
 
 def findElementsInMask(mask):
+    output = cv2.connectedComponentsWithStats(mask, 8, cv2.CV_32S)
+    (numLabels, labels, boxes, centroids) = output
+    # print('resultados de connected: ',numLabels, labels, boxes)
+
+    # plt.imshow(mask, cmap='gray')
+    # plt.show()
+    # cv2.waitKey(0)
+    
+    start, end = [], []
+    for box in boxes[1:]:
+        start.append([box[1], box[0]])
+        end.append([box[1] + box[3], box[0] + box[2]])
+    
+    numberElements = numLabels - 1
     # Structuring element
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
 
@@ -44,34 +58,43 @@ def findElementsInMask(mask):
     gradient1 = dilation - erosion
 
     #get the start corners
-    kernel[:,:] = 0; kernel[1,1] = 1; kernel[2,1] = 1; kernel[1,2] = 1
-    startCorner = cv2.erode(gradient1, kernel, iterations = 3)
-    start = np.argwhere(startCorner == 255)
+    # kernel[:,:] = 0; kernel[1,1] = 1; kernel[2,1] = 1; kernel[1,2] = 1
+    # startCorner = cv2.erode(gradient1, kernel, iterations = 3)
+    # start = np.argwhere(startCorner == 255)
 
     #get the end corners
-    kernel[:,:] = 0; kernel[1,1] = 1; kernel[0,1] = 1; kernel[1,0] = 1
-    endCorner = cv2.erode(gradient1, kernel, iterations = 3)
-    endAux = np.argwhere(endCorner == 255)
+    # kernel[:,:] = 0; kernel[1,1] = 1; kernel[0,1] = 1; kernel[1,0] = 1
+    # endCorner = cv2.erode(gradient1, kernel, iterations = 3)
+    # endAux = np.argwhere(endCorner == 255)
 
     #make sure each end corner is at the correct pos
-    numberElements = len(start)
+    # numberElements = len(start)
     # print(start)
-    if numberElements > 1:
-        end = [[]] * len(start)
-        for corner in endAux:
-            distances = [math.hypot(point[0]-corner[0], point[1]-corner[1]) for point in start]
-            smallerPoint = [(point[0] < corner[0] and point[1] < corner[1]) for point in start]
-            union = list(map(lambda d, s: d if s else math.inf ,distances,smallerPoint))
-            # print('Corner',corner,'distances',distances,'smaller',smallerPoint,'union', union)
-            end[np.argmin(union)] = corner
-    else:
-        end = endAux
+    # if numberElements > 1:
+    #     end = [[]] * len(start)
+    #     for corner in endAux:
+    #         distances = [math.hypot(point[0]-corner[0], point[1]-corner[1]) for point in start]
+    #         smallerPoint = [(point[0] < corner[0] and point[1] < corner[1]) for point in start]
+    #         union = list(map(lambda d, s: d if s else math.inf ,distances,smallerPoint))
+    #         end[np.argmin(union)] = corner
+    # else:
+    #     end = endAux
 
     
     # print(end)
     # print('Forma del gradiente es',np.shape(gradient1),'Esquinas: ',start)
     # cv2.imshow('corners',startCorner)
     # cv2.waitKey(0)
+    # indexToDelete = []
+    # for ind, corn in enumerate(end):
+    #     if len(corn) == 0:
+    #         indexToDelete.append(ind)
+    
+    # if len(indexToDelete) > 0:
+    #     start = np.delete(start, indexToDelete, axis=0)
+    #     end = np.delete(end, indexToDelete, axis=0)
+
+    # numberElements = len(start)
     
     return numberElements, start, end
 
@@ -201,10 +224,10 @@ def backgroundRemoval(queryImage, filename):
     #Exporting mask as .png file
     cv2.imwrite(os.path.basename(filename).replace('jpg', 'png'), mask)
 
-    plt.imshow(cv2.cvtColor(mask, cv2.COLOR_BGR2RGB))
-    plt.axis("off")
-    plt.title('Mask basic')
-    plt.show()
+    # plt.imshow(cv2.cvtColor(mask, cv2.COLOR_BGR2RGB))
+    # plt.axis("off")
+    # plt.title('Mask basic')
+    # plt.show()
     '''
     plt.imshow(cv2.cvtColor(maskCleanV, cv2.COLOR_BGR2RGB))
     plt.axis("off")
@@ -216,25 +239,25 @@ def backgroundRemoval(queryImage, filename):
     plt.title('Mask cleaned H')
     plt.show()
     '''
-    plt.imshow(cv2.cvtColor(maskClean, cv2.COLOR_BGR2RGB))
-    plt.axis("off")
-    plt.title('Mask cleaned')
-    plt.show()
+    # plt.imshow(cv2.cvtColor(maskClean, cv2.COLOR_BGR2RGB))
+    # plt.axis("off")
+    # plt.title('Mask cleaned')
+    # plt.show()
     
-    plt.imshow(cv2.cvtColor(maskClosing, cv2.COLOR_BGR2RGB))
-    plt.axis("off")
-    plt.title('Mask closing')
-    plt.show()
+    # plt.imshow(cv2.cvtColor(maskClosing, cv2.COLOR_BGR2RGB))
+    # plt.axis("off")
+    # plt.title('Mask closing')
+    # plt.show()
     
-    plt.imshow(cv2.cvtColor(maskOpening, cv2.COLOR_BGR2RGB))
-    plt.axis("off")
-    plt.title('Mask opening')
-    plt.show()
+    # plt.imshow(cv2.cvtColor(maskOpening, cv2.COLOR_BGR2RGB))
+    # plt.axis("off")
+    # plt.title('Mask opening')
+    # plt.show()
     
-    plt.imshow(cv2.cvtColor(maskFinal, cv2.COLOR_BGR2RGB))
-    plt.axis("off")
-    plt.title('Final mask')
-    plt.show()
+    # plt.imshow(cv2.cvtColor(maskFinal, cv2.COLOR_BGR2RGB))
+    # plt.axis("off")
+    # plt.title('Final mask')
+    # plt.show()
 
     # Mask evaluation
     annotationPath = filename.replace('jpg', 'png')

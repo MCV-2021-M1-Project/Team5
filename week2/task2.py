@@ -60,7 +60,7 @@ def main():
         if args.query_image:
             queryImage = cv2.imread(args.query_image)
             filename = args.query_image
-            comp = compareHistograms(queryImage, args.color_space, args.mask, args.k_best, ddbb_histograms, filename, args.split)
+            comp = compareHistograms(queryImage, args.color_space, args.mask, ddbb_histograms, filename, args.split)
             allResults = comp[0]
 
             # plot K best coincidences
@@ -91,7 +91,7 @@ def main():
             for queryImage in images:
                 filename = filenames[i]
                 i += 1
-                comp = compareHistograms(queryImage, args.color_space, args.mask, args.k_best, ddbb_histograms, filename, args.split)
+                comp = compareHistograms(queryImage, args.color_space, args.mask, ddbb_histograms, filename, args.split, args.extract_text_box)
                 allResults = comp[0]
                 #Add the best k pictures to the array that is going to be exported as pickle
                 if not isinstance(allResults, list):

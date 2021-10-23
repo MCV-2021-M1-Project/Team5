@@ -7,7 +7,7 @@ import pickle
 import numpy as np
 import constants as C
 from average_metrics import bbox_iou
-from histogram_processing import getHistogram2, plotHistogram
+from matplotlib import pyplot as plt
 from morphologicalOperations import thresholdImage, openingImage, closingImage, blackHat, topHat, morphologicalGradient, highpass
 
 # convert xywh to box points
@@ -44,7 +44,7 @@ def getMaskThreshold(gray, text_mask):
     channels, mask, bins, colorRange = C.OPENCV_COLOR_SPACES[colorSpace][1:]
 
     # Get grayscale histogram of the mask
-    hist = getHistogram2(gray, channels, text_mask, bins, colorRange)
+    hist = cv2.calcHist([gray], channels, text_mask, bins, colorRange)
     # plotHistogram(hist)
 
     # Convert histogram to simple list
@@ -89,12 +89,12 @@ def getTextBox(image):
     #Perform top hat & balck hat operation to extract text box and text
     black_hat = blackHat(gray, hat_structuring_element)
     top_hat = topHat(gray, hat_structuring_element)
-    cv2.imshow("top_hat & black_hat", np.hstack([top_hat, black_hat]))
+    #cv2.imshow("top_hat & black_hat", np.hstack([top_hat, black_hat]))
 
     top_hat_mask = thresholdImage(top_hat, 127)
     black_hat_mask = thresholdImage(black_hat, 127)
 
-    # cv2.imshow("top_hat_mask & black_hat_mask", np.hstack([top_hat_mask, black_hat_mask]))
+    # #cv2.imshow("top_hat_mask & black_hat_mask", np.hstack([top_hat_mask, black_hat_mask]))
 
     # Combine top hat and black hat with an And gate
     hat2 = cv2.bitwise_or(top_hat_mask, black_hat_mask)
@@ -105,22 +105,22 @@ def getTextBox(image):
     # Remove noises from the mask
     text_mask = openingImage(hat, opening_structuring_element)
     text_mask = closingImage(text_mask, closing_structuring_element)
-    # cv2.imshow("text_mask", np.hstack([hat, text_mask]))
+    # #cv2.imshow("text_mask", np.hstack([hat, text_mask]))
 
-    cv2.imshow("text_mask", text_mask)
+    #cv2.imshow("text_mask", text_mask)
 
     # Obtain the extract pixel value of the text box background
     peak = getMaskThreshold(gray, text_mask)
 
     # Threshold the image with the pixel value of the text box
     mask = cv2.inRange(gray, peak - 1, peak + 1)
-    cv2.imshow("mask_thres", mask)
+    #cv2.imshow("mask_thres", mask)
 
     # Remove noises from the mask
     mask = openingImage(mask, opening_structuring_element)
     mask = closingImage(mask, closing_structuring_element)
 
-    cv2.imshow("final mask", mask)
+    #cv2.imshow("final mask", mask)
     return mask
 
 # Given image and maske return the rectangle coordinates x, y, w, h
@@ -129,10 +129,10 @@ def maskToRect(image, mask):
     x, y, w, h = cv2.boundingRect(mask)
 
     # gradient = morphologicalGradient(mask, (3,3))
-    # cv2.imshow("gradient", gradient)
+    # #cv2.imshow("gradient", gradient)
     #
     # high = highpass(mask, 3)
-    # cv2.imshow("highpass", high)
+    # #cv2.imshow("highpass", high)
 
     ret, thresh = cv2.threshold(mask, 40, 255, 0)
     contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
@@ -148,9 +148,15 @@ def maskToRect(image, mask):
     cv2.rectangle(output, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
     # # show the images
-    # cv2.imshow("Result", np.hstack([image, output]))
+    # plt.imshow(np.hstack([image, output]), cmap='gray')
+    # plt.show()
     # cv2.waitKey(0)
     return x, y, w, h
+
+def getTextBoundingBoxAlone(image):
+    mask = getTextBox(image)
+    x, y, w, h = maskToRect(image, mask)
+    return convertBox(x, y, w, h)
 
 def getTextBoundingBox():
     # construct the argument parser and parse the arguments
@@ -196,5 +202,3 @@ def getTextBoundingBox():
         image = cv2.imread(args.image)
         mask = getTextBox(image)
         x, y, w, h = maskToRect(image, mask)
-
-getTextBoundingBox()
