@@ -105,8 +105,6 @@ def plotHistogram(hist):
 
     plt.show()
 
-
-        
 def loadAllImages(folderPath):
     
     ddbb_images = {}

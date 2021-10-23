@@ -114,7 +114,7 @@ def getTextBox(image):
 
     # Threshold the image with the pixel value of the text box
     mask = cv2.inRange(gray, peak - 1, peak + 1)
-    #cv2.imshow("mask_thres", mask)
+    # cv2.imshow("mask_thres", mask)
 
     # Remove noises from the mask
     mask = openingImage(mask, opening_structuring_element)
@@ -125,30 +125,28 @@ def getTextBox(image):
 
 # Given image and maske return the rectangle coordinates x, y, w, h
 def maskToRect(image, mask):
-    output = cv2.bitwise_and(image, image, mask=mask)
-    x, y, w, h = cv2.boundingRect(mask)
+    image_masked = cv2.bitwise_and(image, image, mask=mask)
+    output = cv2.connectedComponentsWithStats(mask, 8, cv2.CV_32S)
+    (numLabels, labels, boxes, centroids) = output
 
-    # gradient = morphologicalGradient(mask, (3,3))
-    # #cv2.imshow("gradient", gradient)
-    #
-    # high = highpass(mask, 3)
-    # #cv2.imshow("highpass", high)
+    boxes = np.delete(boxes, 0, 0)
+    if boxes.shape[0] > 1:
+        index = boxes.argmax(axis=0)[4]
+        print (index)
+        x = boxes[index][0]
+        y = boxes[index][1]
+        w = boxes[index][2]
+        h = boxes[index][3]
+    else:
+        x = boxes[0][0]
+        y = boxes[0][1]
+        w = boxes[0][2]
+        h = boxes[0][3]
 
-    ret, thresh = cv2.threshold(mask, 40, 255, 0)
-    contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    cv2.rectangle(image_masked, (x, y), (x + w, y+h), (0, 255, 0), 2)
 
-    if len(contours) != 0:
-        # find the biggest countour (c) by the area
-        c = max(contours, key=cv2.contourArea)
-        x, y, w, h = cv2.boundingRect(c)
-
-        # draw the biggest contour (c) in green
-        cv2.rectangle(output, (x, y), (x + w, y + h), (0, 255, 0), 2)
-
-    cv2.rectangle(output, (x, y), (x + w, y + h), (0, 255, 0), 2)
-
-    # # show the images
-    # plt.imshow(np.hstack([image, output]), cmap='gray')
+    # # # show the images
+    # plt.imshow(np.hstack([image, image_masked]), cmap='gray')
     # plt.show()
     # cv2.waitKey(0)
     return x, y, w, h
