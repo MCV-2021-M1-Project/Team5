@@ -7,7 +7,7 @@ from average_metrics import mapk
 from background_processor import backgroundRemoval, intersect_matrices, findElementsInMask
 from extractTextBox import getTextBoundingBoxAlone
 
-def getSingleHistogram(image, channels, mask, bins, colorRange, sections = 1):
+def getSingleHistogram(image, channels, mask, bins, colorRange, sections = 1, maskPos = []):
     if sections <= 1:
             # Compute the histogram with color space passed as argument
             queryHist = cv2.calcHist([image], channels, mask, bins, colorRange)
@@ -17,12 +17,23 @@ def getSingleHistogram(image, channels, mask, bins, colorRange, sections = 1):
         sectionsMask = np.zeros((image.shape[0], image.shape[1]), dtype="uint8")
         sH = image.shape[0] // sections
         sW = image.shape[1] // sections
+        hStart, wStart = 0, 0
+        if len(maskPos) > 0:
+            sectionsMaskAux = np.zeros((maskPos[1][0] - maskPos[0][0], maskPos[1][1] - maskPos[0][1]), dtype="uint8")
+            sH = sectionsMaskAux.shape[0] // sections
+            sW = sectionsMaskAux.shape[1] // sections
+            hStart = maskPos[0][0]
+            wStart = maskPos[0][1]
+            # print(f'Size img: {image.shape}, auxMaskShape: {sectionsMaskAux.shape}, regSize: {sH}-{sW}, {hStart}-{wStart}')
         auxHists = []
         for row in range(sections):
             for column in range(sections):
-                sectionsMask[sH*row:(sH*row + sH),sW*column:(sW*column + sW)] = 255
+                sectionsMask[(hStart+sH*row):(sH*row + hStart + sH),(wStart+sW*column):(sW*column + wStart + sW)] = 255
                 if mask is not None:
                     sectionsMask = intersect_matrices(sectionsMask, mask)
+                # plt.imshow(sectionsMask, cmap='gray')
+                # plt.show()
+                # cv2.waitKey(0)
                 auxhist = cv2.calcHist([image], channels, sectionsMask, bins, colorRange)
                 auxHists.extend(cv2.normalize(auxhist, auxhist).flatten())
                 sectionsMask[:,:] = 0
@@ -56,21 +67,21 @@ def getHistogram(image, channels, mask, bins, colorRange, sections = 1, textBoxI
             histograms = []
             for num in range(elems):
                 auxMask = np.zeros(mask.shape, dtype="uint8")
-                print(f'Size: {np.shape(auxMask)}, Rango {start[num][0]}:{end[num][0]} - {start[num][1]}:{end[num][1]}')
+                # print(f'Size: {np.shape(auxMask)}, Rango {start[num][0]}:{end[num][0]} - {start[num][1]}:{end[num][1]}')
                 auxMask[start[num][0]:end[num][0],start[num][1]:end[num][1]] = 255
                 if textBoxImage is not None:
                     res = cv2.bitwise_and(textBoxImage,textBoxImage,mask = auxMask)
-                    plt.imshow(res)
-                    plt.show()
-                    cv2.waitKey(0)
+                    # plt.imshow(res)
+                    # plt.show()
+                    # cv2.waitKey(0)
                     box = getTextBoundingBoxAlone(res)
                     textMask = np.zeros(mask.shape, dtype="uint8")
                     textMask[box[1]:box[3],box[0]:box[2]] = 255
                     auxMask = cv2.bitwise_and(auxMask,auxMask,mask = cv2.bitwise_not(textMask))
-                    plt.imshow(auxMask, cmap='gray')
-                    plt.show()
-                    cv2.waitKey(0)
-                histograms.append(getSingleHistogram(image, channels, auxMask, bins, colorRange, sections))
+                    # plt.imshow(auxMask, cmap='gray')
+                    # plt.show()
+                    # cv2.waitKey(0)
+                histograms.append(getSingleHistogram(image, channels, auxMask, bins, colorRange, sections, [start[num], end[num]]))
             return histograms
         else:
             return getSingleHistogram(image, channels, mask, bins, colorRange, sections)
