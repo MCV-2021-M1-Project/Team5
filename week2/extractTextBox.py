@@ -132,16 +132,19 @@ def maskToRect(image, mask):
     boxes = np.delete(boxes, 0, 0)
     if boxes.shape[0] > 1:
         index = boxes.argmax(axis=0)[4]
-        print (index)
+        # print (index)
         x = boxes[index][0]
         y = boxes[index][1]
         w = boxes[index][2]
         h = boxes[index][3]
     else:
-        x = boxes[0][0]
-        y = boxes[0][1]
-        w = boxes[0][2]
-        h = boxes[0][3]
+        if len(boxes) == 0:
+            x, y, w, h = 0, 0, 0, 0
+        else:
+            x = boxes[0][0]
+            y = boxes[0][1]
+            w = boxes[0][2]
+            h = boxes[0][3]
 
     cv2.rectangle(image_masked, (x, y), (x + w, y+h), (0, 255, 0), 2)
 

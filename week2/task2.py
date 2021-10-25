@@ -89,6 +89,7 @@ def main():
             i = 0
             
             for queryImage in images:
+                print('Processing image: ', filenames[i])
                 filename = filenames[i]
                 i += 1
                 comp = compareHistograms(queryImage, args.color_space, args.mask, ddbb_histograms, filename, args.split, args.extract_text_box)
@@ -105,8 +106,8 @@ def main():
                             resultPickle[methodName] = []
                         for score, name in results[methodName][0:args.k_best]:
                             bestAux.append(int(Path(name).stem.split('_')[1]))
-                    bestPictures.append(bestAux)
-                    resultPickle[methodName].append(bestAux)
+                        bestPictures.append(bestAux)
+                    resultPickle[methodName].append(bestPictures)
                 
                 precisionList.append(comp[1])
                 recallList.append(comp[2])
@@ -127,7 +128,6 @@ def main():
                 print(f'Average F1-measure of masks is {avgF1}.')
 
             #Result export
-            print('Resultados de Hellinger:', resultPickle['Hellinger'])
             gtRes = None
             if os.path.exists(args.gt_results):
                 with open(args.gt_results, 'rb') as reader:
@@ -137,8 +137,8 @@ def main():
                 if gtRes is not None:
                     resultScore = mapk(gtRes, res, args.k_best)
                     print(f'Average precision in {name} for k = {args.k_best} is {resultScore}.')
-                # with open(name + '_' + args.color_space + '.pkl', 'wb') as handle:
-                #     pickle.dump(res, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                with open(name + '_' + args.color_space + '.pkl', 'wb') as handle:
+                    pickle.dump(res, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 
