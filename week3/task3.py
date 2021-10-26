@@ -128,7 +128,7 @@ def main():
                     gtRes = pickle.load(reader)
 
             if gtRes is not None:
-                flattened = [val for sublist in resultPickle for val in sublist]
+                flattened = [np.array(sublist).flatten() for sublist in resultPickle]
                 resultScore = mapk(gtRes, flattened, args.k_best)
                 print(f'Average precision in Hellinger for k = {args.k_best} is {resultScore}.')
             with open('Hellinger_' + args.color_space + '_segments' + str(args.split) + '.pkl', 'wb') as handle:
