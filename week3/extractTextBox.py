@@ -138,7 +138,7 @@ def maskToRect(image, mask):
         w = boxes[index][2]
         h = boxes[index][3]
     else:
-        if len(boxes) == 0:
+        if len(boxes) == 0: #If no box was found, set the 0,0 pixel
             x, y, w, h = 0, 0, 0, 0
         else:
             x = boxes[0][0]
@@ -157,7 +157,7 @@ def maskToRect(image, mask):
 def getTextBoundingBoxAlone(image):
     mask = getTextBox(image)
     x, y, w, h = maskToRect(image, mask)
-    print(convertBox3(x, y, w, h))
+    # print(convertBox3(x, y, w, h))
     return convertBox(x, y, w, h)
 
 def convertBox3(x, y, w, h):
@@ -168,14 +168,10 @@ def convertBox3(x, y, w, h):
     return [tlx, tly, brx, bry]
 
 
-def getTextBoundingBox():
+def getTextBoundingBox(image, folder = None, boxes_pkl = None):
     # construct the argument parser and parse the arguments
-    ap = argparse.ArgumentParser()
-    ap.add_argument("-i", "--image", help="path to input image")
-    ap.add_argument("-f", "--folder", help="path to input images")
-    args, leftovers = ap.parse_known_args()
 
-    with open("/Users/brian/Desktop/Computer Vision/M1/Project/qsd1_w2/text_boxes.pkl", 'rb') as reader:
+    with open(boxes_pkl, 'rb') as reader:
         gt_boxes = pickle.load(reader)
 
     result = []
@@ -183,8 +179,8 @@ def getTextBoundingBox():
 
     # load the image, convert it to grayscale, and display it to our
     # screen
-    if args.folder is not None:
-        filenames = [img for img in glob.glob(args.folder + "/*" + ".jpg")]
+    if folder is not None:
+        filenames = [img for img in glob.glob(folder + "/*" + ".jpg")]
         filenames.sort()
 
         # Load images to a list
@@ -209,6 +205,7 @@ def getTextBoundingBox():
         print("Detection failed: ", counter)
 
     else:
-        image = cv2.imread(args.image)
-        mask = getTextBox(image)
-        x, y, w, h = maskToRect(image, mask)
+        imageBGR = cv2.imread(image)
+        mask = getTextBox(imageBGR)
+        x, y, w, h = maskToRect(imageBGR, mask)
+        return convertBox(x, y, w, h)
