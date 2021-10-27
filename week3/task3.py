@@ -8,6 +8,8 @@ import numpy as np
 from plot import plotResults
 import constants as C
 from average_metrics import mapk
+from matplotlib import pyplot as plt
+from denoise_image import denoinseImage
 from histogram_processing import getImagesAndHistograms, compareHistograms, getDistances, loadAllImages
 
 def parse_args():
@@ -24,12 +26,24 @@ def parse_args():
     parser.add_argument('-m', '--mask', type=bool, default=False, help='Set True to remove background')
     parser.add_argument('-t', '--extract_text_box', type=bool, default=False, help='Set True to extract the text bounding box')
     parser.add_argument('-plt', '--plot_result', type=bool, default=False, help='Set to True to plot results')
+    parser.add_argument('-d', '--denoise', type=bool, default=False, help='Denoise query image before processing it')
     return parser.parse_args()
 
 def main():
     args = parse_args()
 
-    if args.validation_metrics:
+    if args.denoise:
+        filenames = [img for img in glob.glob(args.query_image_folder + "/*"+ ".jpg")]
+        filenames.sort()
+        filenamesGt = [img for img in glob.glob(args.query_image_folder + "/non_augmented/*"+ ".jpg")]
+        filenamesGt.sort()
+        # Load images to a list
+        for ind, img in enumerate(filenames):
+            n = cv2.imread(img)
+            # Denoising
+            gt = cv2.imread(filenamesGt[ind])
+            dst = denoinseImage(n, gt)
+    elif args.validation_metrics:
         #read ground truth result (format [[r1],[r2]...])
         with open(args.gt_results, 'rb') as reader:
             gtRes = pickle.load(reader)
