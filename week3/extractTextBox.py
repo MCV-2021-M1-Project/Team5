@@ -14,6 +14,8 @@ import pytesseract
 import textdistance
 from morphologicalOperations import thresholdImage, openingImage, closingImage, blackHat, topHat, morphologicalGradient, highpass
 
+# pytesseract.pytesseract.tesseract_cmd = r'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'
+
 # convert xywh to box points
 def convertBox(x, y, w, h):
     blx = x
@@ -224,7 +226,7 @@ def test():
     ap.add_argument("-f", "--folder", help="path to input images")
     args, leftovers = ap.parse_known_args()
 
-    with open("/Users/brian/Desktop/Computer Vision/M1/Project/qsd1_w2/text_boxes.pkl", 'rb') as reader:
+    with open("../datasets/qsd1_w3/text_boxes.pkl", 'rb') as reader:
         gt_boxes = pickle.load(reader)
 
     result = []
