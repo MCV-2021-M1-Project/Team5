@@ -251,18 +251,18 @@ def test():
             image_masked = cv2.bitwise_and(image, image, mask=mask)
             if w > 0 and h > 0:
                 img_cropped = image_masked[y:y + h, x:x + w]
-            # cv2.imshow("croped image", img_cropped)
-            # cv2.waitKey(0)
+                # cv2.imshow("croped image", img_cropped)
+                # cv2.waitKey(0)
 
                 extractedInformation = pytesseract.image_to_string(img_cropped)
                 extractedInformation = ' '.join(extractedInformation.split())
                 print("Extracted Text: " + extractedInformation)
 
                 with open(textnames[i], encoding="latin-1") as file:
-                    text = file.read()
-                "".join(filter(lambda char: char in string.printable, text))
+                    name = file.read()
+                "".join(filter(lambda char: char in string.printable, name))
 
-                text = text.split(",", 1)[0]
+                text = name.split(",", 1)[0]
                 if text.count("'") < 2:
                     text = (text.split("\""))[1].split("\"")[0]
                     ''.join(text.split())
@@ -271,7 +271,18 @@ def test():
                     ''.join(text.split())
                 print("Ground Truth Text: " + text)
 
+                text1 = name.split(",", 1)[1]
+                if text1.count("'") < 2:
+                    text1 = (text1.split("\""))[1].split("\"")[0]
+                    ''.join(text1.split())
+                else:
+                    text1 = (text1.split("'"))[1].split("'")[0]
+                    ''.join(text1.split())
+                print("Ground Truth Text1: " + text1)
+
                 distance = textdistance.hamming.normalized_similarity(extractedInformation, text)
+                distance1 = textdistance.hamming.normalized_similarity(extractedInformation, text1)
+                distance = max(distance, distance1)
             else:
                 distance = 0
 
