@@ -249,25 +249,32 @@ def test():
             mask, x, y, w, h = maskToRect(image, mask)
 
             image_masked = cv2.bitwise_and(image, image, mask=mask)
-            img_cropped = image_masked[y:y + h, x:x + w]
+            if w > 0 and h > 0:
+                img_cropped = image_masked[y:y + h, x:x + w]
             # cv2.imshow("croped image", img_cropped)
             # cv2.waitKey(0)
 
-            extractedInformation = pytesseract.image_to_string(img_cropped)
-            # extractedInformation = extractedInformation.replace(" ", "").replace("\n", "").replace("\t", "")
-            ''.join(extractedInformation.split()).replace("\n", "").replace("\t","")
-            print("Extracted Text: (" + extractedInformation + ")")
+                extractedInformation = pytesseract.image_to_string(img_cropped)
+                extractedInformation = ' '.join(extractedInformation.split())
+                print("Extracted Text: " + extractedInformation)
 
-            with open(textnames[i], encoding="latin-1") as file:
-                text = file.read()
-            "".join(filter(lambda char: char in string.printable, text))
+                with open(textnames[i], encoding="latin-1") as file:
+                    text = file.read()
+                "".join(filter(lambda char: char in string.printable, text))
 
-            text = text.split(",")[1]
-            text = (text.split("'"))[1].split("'")[0]
-            ''.join(text.split())
-            print("Ground Truth Text: (" + text + ")")
+                text = text.split(",", 1)[1]
+                if text.count("'") < 2:
+                    text = (text.split("\""))[1].split("\"")[0]
+                    ''.join(text.split())
+                else:
+                    text = (text.split("'"))[1].split("'")[0]
+                    ''.join(text.split())
+                print("Ground Truth Text: " + text)
 
-            distance = textdistance.hamming.normalized_similarity(extractedInformation, text)
+                distance = textdistance.hamming.normalized_similarity(extractedInformation, text)
+            else:
+                distance = 0
+
             print(distance)
             distances.append(distance)
 
