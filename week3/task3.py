@@ -39,6 +39,7 @@ def main():
         filenamesGt.sort()
         # Load images to a list
         for ind, img in enumerate(filenames):
+            print('Processing image: ', filenames[ind])
             n = cv2.imread(img)
             # Denoising
             gt = cv2.imread(filenamesGt[ind])
