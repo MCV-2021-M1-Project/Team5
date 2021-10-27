@@ -262,7 +262,7 @@ def test():
                     text = file.read()
                 "".join(filter(lambda char: char in string.printable, text))
 
-                text = text.split(",", 1)[1]
+                text = text.split(",", 1)[0]
                 if text.count("'") < 2:
                     text = (text.split("\""))[1].split("\"")[0]
                     ''.join(text.split())
