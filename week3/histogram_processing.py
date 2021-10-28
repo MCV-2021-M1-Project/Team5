@@ -7,7 +7,7 @@ from average_metrics import mapk
 from background_processor import backgroundRemoval, intersect_matrices, findElementsInMask
 from extractTextBox import getTextBoundingBoxAlone
 
-def getSingleHistogram(image, channels, mask, bins, colorRange, sections = 1, maskPos = []):
+def getSingleColorHistogram(image, channels, mask, bins, colorRange, sections = 1, maskPos = []):
     if sections <= 1:
             # Compute the histogram with color space passed as argument
             queryHist = cv2.calcHist([image], channels, mask, bins, colorRange)
@@ -53,38 +53,24 @@ def getColorHistogram(image, channels, mask, bins, colorRange, sections = 1, tex
             mask = np.zeros((image.shape[0], image.shape[1]), dtype="uint8")
             mask[box[1]:box[3],box[0]:box[2]] = 255
             mask = cv2.bitwise_not(mask)
-            # plt.imshow(mask, cmap='gray')
-            # plt.show()
-            # cv2.waitKey(0)
-        return getSingleHistogram(image, channels, mask, bins, colorRange, sections)
+        return getSingleColorHistogram(image, channels, mask, bins, colorRange, sections)
     else:
-        # plt.imshow(mask, cmap='gray')
-        # plt.show()
-        # cv2.waitKey(0)
         elems, start, end = findElementsInMask(mask)
-        # print(f'Elementos {elems}, inicios {start}, finales {end}')
         if elems > 1:
             histograms = []
             for num in range(elems):
                 auxMask = np.zeros(mask.shape, dtype="uint8")
-                # print(f'Size: {np.shape(auxMask)}, Rango {start[num][0]}:{end[num][0]} - {start[num][1]}:{end[num][1]}')
                 auxMask[start[num][0]:end[num][0],start[num][1]:end[num][1]] = 255
                 if textBoxImage is not None:
                     res = cv2.bitwise_and(textBoxImage,textBoxImage,mask = auxMask)
-                    # plt.imshow(res)
-                    # plt.show()
-                    # cv2.waitKey(0)
                     box = getTextBoundingBoxAlone(res)
                     textMask = np.zeros(mask.shape, dtype="uint8")
                     textMask[box[1]:box[3],box[0]:box[2]] = 255
                     auxMask = cv2.bitwise_and(auxMask,auxMask,mask = cv2.bitwise_not(textMask))
-                    # plt.imshow(auxMask, cmap='gray')
-                    # plt.show()
-                    # cv2.waitKey(0)
-                histograms.append(getSingleHistogram(image, channels, auxMask, bins, colorRange, sections, [start[num], end[num]]))
+                histograms.append(getSingleColorHistogram(image, channels, auxMask, bins, colorRange, sections, [start[num], end[num]]))
             return histograms
         else:
-            return getSingleHistogram(image, channels, mask, bins, colorRange, sections)
+            return getSingleColorHistogram(image, channels, mask, bins, colorRange, sections)
 
 
 def plotHistogram(hist):
@@ -143,28 +129,8 @@ def getColorHistograms(folderPath, colorSpace, sections = 1):
         ddbb_color_histograms[filename] = hist
         
     return ddbb_color_histograms
-
-<<<<<<< Updated upstream
-
-def getHistogramForQueryImage(queryImage, colorSpace, mask_check, filename, sections = 1, textBox = False):
-=======
-def compareColorHistograms(queryImage, colorSpace, mask_check, ddbb_histograms, filename, sections = 1, textBox = False):
-    """
-    Compare the histograms of ddbb_color_histograms with the one for queryImage and returns
-    a dictionary of diferent methods
-
-    :param queryImage: image to look for in ddbb_histograms
-    :param colorSpace: color space to compute the histogramas of the query image
-    :param mask_check: if true tried to remove the background from queryImage
-    :param ddbb_histograms: dictionary with the histograms of the images where queryImage is going to be searched
-    :param filename: if mask_check is true it's used to load the gt mask and compute the quality of the computed mask
-
-    :return: 1- Dictionary with all the distances for queryImage ordered for different Methods (format: {'MethodName': [Distances...]})
-             2- precsion of the mask computed if mask_check and filename has a png with the ground truth, -1 othewise
-             3- recall of the mask computed if mask_check and filename has a png with the ground truth, -1 othewise
-             4- f1-measure of the mask computed if mask_check and filename has a png with the ground truth, -1 othewise
-    """ 
->>>>>>> Stashed changes
+    
+def getColorHistogramForQueryImage(queryImage, colorSpace, mask_check, filename, sections = 1, textBox = False):
     originalImage = queryImage
 
     # Apply mask if applicable
@@ -194,10 +160,8 @@ def compareColorHistograms(queryImage, colorSpace, mask_check, ddbb_histograms, 
         queryHist = getColorHistogram(queryImageColorSpace, channels, backgroundMask, bins, colorRange, sections, None)
     
     return queryHist, precision, recall, F1_measure
-    
 
-
-def compareHistograms(queryHist, ddbb_histograms):
+def compareColorHistograms(queryHist, ddbb_histograms):
     """
     Compare the histograms of ddbb_histograms with the one for queryImage and returns
     a dictionary of diferent methods
