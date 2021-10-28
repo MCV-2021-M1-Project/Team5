@@ -1,4 +1,5 @@
 from matplotlib import pyplot as plt
+import os
 
 def plotResults(results, kBest, imagesDDBB, queryImage):
     # show the query image

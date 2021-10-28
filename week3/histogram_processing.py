@@ -40,7 +40,7 @@ def getSingleHistogram(image, channels, mask, bins, colorRange, sections = 1, ma
         return auxHists
 
 
-def getHistogram(image, channels, mask, bins, colorRange, sections = 1, textBoxImage = None):
+def getColorHistogram(image, channels, mask, bins, colorRange, sections = 1, textBoxImage = None):
     """
     Compute the histogram for a given image and with the specified arguments for the histogram.
     If sections is bigger than 1 the image will be splited into sections*sections before computing.
@@ -111,26 +111,20 @@ def loadAllImages(folderPath):
 
     return ddbb_images
 
-def getImagesAndHistograms(folderPath, colorSpace, sections = 1):
+def getColorHistograms(folderPath, colorSpace, sections = 1):
     """
-    Returns a dict that contain all the jpg images from folder path, and 
-    other one with the corresponding histograms for each image
+    Returns a dict that contain color histograms for each ddbb image
 
     :param folderPath: relative path to the images to process
     :param colorSpace: color space to compute the histogramas of the images
 
-    :return: 1- Dictionary with all the images loaded in RGB format so the can be plotted ({'imageRelativePath': [RGB image]})
-             1- Dictionary with the histograms for all the images loaded ({'imageRelativePath': [histogram]})
+    :return: 1- Dictionary with the histograms for all the images loaded ({'imageRelativePath': [histogram]})
     """ 
-    ddbb_images = {}
-    ddbb_histograms = {}
+    ddbb_color_histograms = {}
     
     for img in filter(lambda el: el.find('.jpg') != -1, os.listdir(folderPath)):
         filename = folderPath + '/' + img
         image = cv2.imread(filename)
-        
-        # Denoising images using Gaussian Blur
-        image = cv2.GaussianBlur(image,(3,3), 0)
         
         # Equalizing Saturation and Lightness via HSV
         image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
@@ -142,21 +136,36 @@ def getImagesAndHistograms(folderPath, colorSpace, sections = 1):
         # Changing color space
         aux = cv2.cvtColor(image, C.OPENCV_COLOR_SPACES[colorSpace][0])
         
-        # Store the image as RGB for later plot
-        ddbb_images[filename] = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         channels, mask, bins, colorRange = C.OPENCV_COLOR_SPACES[colorSpace][1:]
 
-        hist = getHistogram(aux, channels, mask, bins, colorRange, sections)
+        hist = getColorHistogram(aux, channels, mask, bins, colorRange, sections)
 
-        ddbb_histograms[filename] = hist
+        ddbb_color_histograms[filename] = hist
         
-    return ddbb_images, ddbb_histograms
+    return ddbb_color_histograms
 
+<<<<<<< Updated upstream
 
 def getHistogramForQueryImage(queryImage, colorSpace, mask_check, filename, sections = 1, textBox = False):
+=======
+def compareColorHistograms(queryImage, colorSpace, mask_check, ddbb_histograms, filename, sections = 1, textBox = False):
+    """
+    Compare the histograms of ddbb_color_histograms with the one for queryImage and returns
+    a dictionary of diferent methods
+
+    :param queryImage: image to look for in ddbb_histograms
+    :param colorSpace: color space to compute the histogramas of the query image
+    :param mask_check: if true tried to remove the background from queryImage
+    :param ddbb_histograms: dictionary with the histograms of the images where queryImage is going to be searched
+    :param filename: if mask_check is true it's used to load the gt mask and compute the quality of the computed mask
+
+    :return: 1- Dictionary with all the distances for queryImage ordered for different Methods (format: {'MethodName': [Distances...]})
+             2- precsion of the mask computed if mask_check and filename has a png with the ground truth, -1 othewise
+             3- recall of the mask computed if mask_check and filename has a png with the ground truth, -1 othewise
+             4- f1-measure of the mask computed if mask_check and filename has a png with the ground truth, -1 othewise
+    """ 
+>>>>>>> Stashed changes
     originalImage = queryImage
-    # Denoising query image using Gaussian blur
-    queryImage = cv2.GaussianBlur(queryImage,(3,3), 0)
 
     # Apply mask if applicable
     backgroundMask = None
@@ -180,9 +189,9 @@ def getHistogramForQueryImage(queryImage, colorSpace, mask_check, filename, sect
     # Compute the histogram with color space passed as argument
     queryHist = None
     if textBox:
-        queryHist = getHistogram(queryImageColorSpace, channels, backgroundMask, bins, colorRange, sections, originalImage)
+        queryHist = getColorHistogram(queryImageColorSpace, channels, backgroundMask, bins, colorRange, sections, originalImage)
     else:
-        queryHist = getHistogram(queryImageColorSpace, channels, backgroundMask, bins, colorRange, sections, None)
+        queryHist = getColorHistogram(queryImageColorSpace, channels, backgroundMask, bins, colorRange, sections, None)
     
     return queryHist, precision, recall, F1_measure
     
@@ -214,8 +223,6 @@ def compareHistograms(queryHist, ddbb_histograms):
         allResults[0] = sorted([(v, k) for (k, v) in results.items()], reverse=False)
         
     return allResults
-
-
 
 def getDistances(comparisonMethod, baseImageHistograms, queryImageHistogram):
     # loop over the index
