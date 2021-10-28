@@ -3,12 +3,18 @@ from __future__ import print_function
 import argparse
 import glob
 import cv2
+import re
 import pickle
+import string
 import numpy as np
 import constants as C
 from average_metrics import bbox_iou
 from matplotlib import pyplot as plt
+import pytesseract
+import textdistance
 from morphologicalOperations import thresholdImage, openingImage, closingImage, blackHat, topHat, morphologicalGradient, highpass
+
+# pytesseract.pytesseract.tesseract_cmd = r'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'
 
 # convert xywh to box points
 def convertBox(x, y, w, h):
@@ -25,6 +31,14 @@ def convertBox2(box):
     trx = box[2][0]
     try1 = box[1][1]
     return [blx, bly, trx, try1]
+
+# xywh to pkl format
+def convertBox3(x, y, w, h):
+    tlx = x
+    tly = y+h
+    brx = x + w
+    bry = y
+    return [tlx, tly, brx, bry]
 
 # Remove Boarder pixels
 def removeBoarder(mask):
@@ -125,7 +139,6 @@ def getTextBox(image):
 
 # Given image and maske return the rectangle coordinates x, y, w, h
 def maskToRect(image, mask):
-    image_masked = cv2.bitwise_and(image, image, mask=mask)
     output = cv2.connectedComponentsWithStats(mask, 8, cv2.CV_32S)
     (numLabels, labels, boxes, centroids) = output
 
@@ -146,27 +159,24 @@ def maskToRect(image, mask):
             w = boxes[0][2]
             h = boxes[0][3]
 
+    rows, cols = mask.shape
+    new_mask = np.zeros((rows, cols), dtype="uint8")
+    new_mask = cv2.rectangle(new_mask.copy(), (x, y), (x+w, y+h), 255, -1)
+
+    image_masked = cv2.bitwise_and(image, image, mask=new_mask)
+
     cv2.rectangle(image_masked, (x, y), (x + w, y+h), (0, 255, 0), 2)
 
-    # # # show the images
-    # plt.imshow(np.hstack([image, image_masked]), cmap='gray')
-    # plt.show()
+    # # show the images
+    # cv2.imshow("Result", np.hstack([image, image_masked]))
     # cv2.waitKey(0)
-    return x, y, w, h
+    return new_mask, x, y, w, h
 
 def getTextBoundingBoxAlone(image):
     mask = getTextBox(image)
-    x, y, w, h = maskToRect(image, mask)
+    mask, x, y, w, h = maskToRect(image, mask)
     # print(convertBox3(x, y, w, h))
     return convertBox(x, y, w, h)
-
-def convertBox3(x, y, w, h):
-    tlx = x
-    tly = y+h
-    brx = x + w
-    bry = y
-    return [tlx, tly, brx, bry]
-
 
 def getTextBoundingBox(imageInput, folder = None, boxes_pkl = None):
     # construct the argument parser and parse the arguments
@@ -189,7 +199,7 @@ def getTextBoundingBox(imageInput, folder = None, boxes_pkl = None):
             print("Painting:", i)
             image = cv2.imread(img)
             mask = getTextBox(image)
-            x, y, w, h = maskToRect(image, mask)
+            mask, x, y, w, h = maskToRect(image, mask)
             box = convertBox(x, y, w, h)
 
             gt_box = convertBox2(gt_boxes[i][0])
@@ -207,7 +217,100 @@ def getTextBoundingBox(imageInput, folder = None, boxes_pkl = None):
     else:
         imageBGR = cv2.imread(imageInput)
         mask = getTextBox(imageBGR)
-        x, y, w, h = maskToRect(imageBGR, mask)
+        mask, x, y, w, h = maskToRect(imageBGR, mask)
         return convertBox(x, y, w, h)
 
-# getTextBoundingBox(None,'../datasets/qsd1_w3', '../datasets/qsd1_w3/text_boxes.pkl')
+def test():
+    # construct the argument parser and parse the arguments
+    ap = argparse.ArgumentParser()
+    ap.add_argument("-i", "--image", help="path to input image")
+    ap.add_argument("-f", "--folder", help="path to input images")
+    args, leftovers = ap.parse_known_args()
+
+    with open("../datasets/qsd1_w3/text_boxes.pkl", 'rb') as reader:
+        gt_boxes = pickle.load(reader)
+
+    result = []
+    distances = []
+    counter = 0
+
+    # load the image, convert it to grayscale, and display it to our
+    # screen
+    if args.folder is not None:
+        filenames = [img for img in glob.glob(args.folder + "/*" + ".jpg")]
+        filenames.sort()
+
+        textnames = [text for text in glob.glob(args.folder + "/*" + ".txt")]
+        textnames.sort()
+
+        # Load images to a list
+        images = []
+        for i, img in enumerate(filenames):
+            print("Painting:", i)
+            image = cv2.imread(img)
+            mask = getTextBox(image)
+            mask, x, y, w, h = maskToRect(image, mask)
+
+            image_masked = cv2.bitwise_and(image, image, mask=mask)
+            if w > 0 and h > 0:
+                img_cropped = image_masked[y:y + h, x:x + w]
+                # cv2.imshow("croped image", img_cropped)
+                # cv2.waitKey(0)
+
+                extractedInformation = pytesseract.image_to_string(img_cropped)
+                extractedInformation = ' '.join(extractedInformation.split())
+                print("Extracted Text: " + extractedInformation)
+
+                with open(textnames[i], encoding="latin-1") as file:
+                    name = file.read()
+                "".join(filter(lambda char: char in string.printable, name))
+
+                text = name.split(",", 1)[0]
+                if text.count("'") < 2:
+                    text = (text.split("\""))[1].split("\"")[0]
+                    ''.join(text.split())
+                else:
+                    text = (text.split("'"))[1].split("'")[0]
+                    ''.join(text.split())
+                print("Ground Truth Text: " + text)
+
+                text1 = name.split(",", 1)[1]
+                if text1.count("'") < 2:
+                    text1 = (text1.split("\""))[1].split("\"")[0]
+                    ''.join(text1.split())
+                else:
+                    text1 = (text1.split("'"))[1].split("'")[0]
+                    ''.join(text1.split())
+                print("Ground Truth Text1: " + text1)
+
+                distance = textdistance.hamming.normalized_similarity(extractedInformation, text)
+                distance1 = textdistance.hamming.normalized_similarity(extractedInformation, text1)
+                distance = max(distance, distance1)
+            else:
+                distance = 0
+
+            print(distance)
+            distances.append(distance)
+
+            box = convertBox(x, y, w, h)
+
+            gt_box = convertBox2(gt_boxes[i][0])
+            iou = bbox_iou(box, gt_box)
+
+            # print("iou: ",iou)
+            if box == [0, 0, 0, 0]:
+                counter = counter + 1
+            result.append(iou)
+
+        # print("Mean iou: ", sum(result) / len(result))
+        # print("Iou excluding failed cases: ", sum(result) / (len(result) - counter))
+        # print("Detection failed: ", counter)
+
+        print("Mean distance: ", sum(distances) / len(distances))
+
+    else:
+        image = cv2.imread(args.image)
+        mask = getTextBox(image)
+        mask, x, y, w, h = maskToRect(image, mask)
+
+test()
