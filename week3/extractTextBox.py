@@ -32,6 +32,7 @@ def convertBox2(box):
     try1 = box[1][1]
     return [blx, bly, trx, try1]
 
+# xywh to pkl format
 def convertBox3(x, y, w, h):
     tlx = x
     tly = y+h
