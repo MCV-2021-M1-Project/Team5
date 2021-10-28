@@ -49,10 +49,10 @@ def getColorHistogram(image, channels, mask, bins, colorRange, sections = 1, tex
     #Check the mask to figure out if there are more than one pictures in the image
     if mask is None:
         if textBoxImage is not None:
-            box = getTextBoundingBoxAlone(textBoxImage)
-            mask = np.zeros((image.shape[0], image.shape[1]), dtype="uint8")
-            mask[box[1]:box[3],box[0]:box[2]] = 255
-            mask = cv2.bitwise_not(mask)
+            mask = getTextBoundingBoxAlone(textBoxImage)
+            # mask = np.zeros((image.shape[0], image.shape[1]), dtype="uint8")
+            # mask[box[1]:box[3],box[0]:box[2]] = 255
+            # mask = cv2.bitwise_not(mask)
         return getSingleColorHistogram(image, channels, mask, bins, colorRange, sections)
     else:
         elems, start, end = findElementsInMask(mask)
@@ -63,9 +63,7 @@ def getColorHistogram(image, channels, mask, bins, colorRange, sections = 1, tex
                 auxMask[start[num][0]:end[num][0],start[num][1]:end[num][1]] = 255
                 if textBoxImage is not None:
                     res = cv2.bitwise_and(textBoxImage,textBoxImage,mask = auxMask)
-                    box = getTextBoundingBoxAlone(res)
-                    textMask = np.zeros(mask.shape, dtype="uint8")
-                    textMask[box[1]:box[3],box[0]:box[2]] = 255
+                    textMask = getTextBoundingBoxAlone(res)
                     auxMask = cv2.bitwise_and(auxMask,auxMask,mask = cv2.bitwise_not(textMask))
                 histograms.append(getSingleColorHistogram(image, channels, auxMask, bins, colorRange, sections, [start[num], end[num]]))
             return histograms

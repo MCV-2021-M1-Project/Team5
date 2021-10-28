@@ -12,6 +12,9 @@ from matplotlib import pyplot as plt
 from denoise_image import denoinseImage
 from histogram_processing import getColorHistograms, compareColorHistograms, getColorHistogramForQueryImage, getDistances, loadAllImages
 from texture_histograms import getTextureHistograms, compareTextureHistograms, getTextureHistogramForQueryImage
+from text_processing import getImagesGtText, compareText, imageToText
+from extractTextBox import getTextAlone
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description= 'Arguments to run the task 1 script')
@@ -33,21 +36,8 @@ def parse_args():
 def main():
     args = parse_args()
 
-    if args.denoise:
-        filenames = [img for img in glob.glob(args.query_image_folder + "/*"+ ".jpg")]
-        filenames.sort()
-        filenamesGt = [img for img in glob.glob(args.query_image_folder + "/non_augmented/*"+ ".jpg")]
-        filenamesGt.sort()
-        # Load images to a list
-        for ind, img in enumerate(filenames):
-            print('Processing image: ', filenames[ind])
-            n = cv2.imread(img)
-            # Denoising
-            gt = cv2.imread(filenamesGt[ind])
-            dst = denoinseImage(n, gt)
-
-    elif args.validation_metrics:
-        #Read ground truth result (format [[r1],[r2]...])
+    if args.validation_metrics:
+        #read ground truth result (format [[r1],[r2]...])
         with open(args.gt_results, 'rb') as reader:
             gtRes = pickle.load(reader)
 
@@ -92,17 +82,22 @@ def main():
                 pickle.dump(ddbb_texture_histograms, handle, protocol=pickle.HIGHEST_PROTOCOL)
         #--------------------------------------
 
+        #Read the text files for data base
+        ddbb_text = getImagesGtText(args.path)
+        
         #--PREPARING QUERY DATA AND COMPARING--
         #Query either an image or a folder
         if args.query_image:
             queryImage = cv2.imread(args.query_image)
+            queryImageDenoised = denoinseImage(queryImage)
             filename = args.query_image
-            
+
             #Compare COLOR histograms
             queryColorHist, _,_,_ = getColorHistogramForQueryImage(queryImage, args.color_space, args.mask, filename, args.split, args.extract_text_box)
             allResultsColor = compareColorHistograms(queryColorHist, ddbb_color_histograms)
             
             #Plot K best coincidences [B R O K E N] <------------
+
             if args.plot_result:
                 #Change the color space to RGB to plot the image later
                 queryImageRGB = cv2.cvtColor(queryImage, cv2.COLOR_BGR2RGB)
@@ -152,6 +147,11 @@ def main():
                 #Comparing TEXTURE histograms
                 componentsTexture = getTextureHistogramForQueryImage(queryImage, args.color_space, args.mask, filename, args.split, args.extract_text_box)
                 allResultsTexture = compareTextureHistograms(componentsTexture[0], ddbb_texture_histograms)
+                
+                img_cropped = getTextAlone(components[0])
+                query_text = imageToText(img_cropped)
+                textResults = compareText(query_text, ddbb_text)
+
 
                 #Add the best k pictures to the array that is going to be exported as pickle
                 bestPictures = []
