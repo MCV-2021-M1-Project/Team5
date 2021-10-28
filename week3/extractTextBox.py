@@ -219,6 +219,38 @@ def getTextBoundingBox(imageInput, folder = None, boxes_pkl = None):
         mask, x, y, w, h = maskToRect(imageBGR, mask)
         return convertBox(x, y, w, h)
 
+def imageToText(image):
+    text = pytesseract.image_to_string(image)
+    text = ' '.join(text.split())
+    print("Extracted Text: " + text)
+
+    return text
+
+def readTextFromFile(lines, number=0):
+    text = lines[number]
+    "".join(filter(lambda char: char in string.printable, text))
+
+    painter_name = text.split(",", 1)[0]
+
+    if painter_name.count("'") < 2:
+        painter_name = (painter_name.split("\""))[1].split("\"")[0]
+        ''.join(painter_name.split())
+    else:
+        painter_name = (painter_name.split("'"))[1].split("'")[0]
+        ''.join(painter_name.split())
+    print("Ground Truth Text: " + painter_name)
+
+    painting_name = text.split(",", 1)[1]
+    if painting_name.count("'") < 2:
+        painting_name = (painting_name.split("\""))[1].split("\"")[0]
+        ''.join(painting_name.split())
+    else:
+        painting_name = (painting_name.split("'"))[1].split("'")[0]
+        ''.join(painting_name.split())
+    print("Ground Truth Text1: " + painting_name)
+
+    return painter_name, painting_name
+
 def test():
     # construct the argument parser and parse the arguments
     ap = argparse.ArgumentParser()
@@ -226,8 +258,11 @@ def test():
     ap.add_argument("-f", "--folder", help="path to input images")
     args, leftovers = ap.parse_known_args()
 
-    with open("../datasets/qsd1_w3/text_boxes.pkl", 'rb') as reader:
-        gt_boxes = pickle.load(reader)
+    # with open("/Users/brian/Desktop/Computer Vision/M1/Project/qsd1_w3/text_boxes.pkl", 'rb') as reader:
+    #     gt_boxes = pickle.load(reader)
+
+    # with open("../datasets/qsd1_w3/text_boxes.pkl", 'rb') as reader:
+    #     gt_boxes = pickle.load(reader)
 
     result = []
     distances = []
@@ -249,57 +284,35 @@ def test():
             image = cv2.imread(img)
             mask = getTextBox(image)
             mask, x, y, w, h = maskToRect(image, mask)
-
             image_masked = cv2.bitwise_and(image, image, mask=mask)
             if w > 0 and h > 0:
                 img_cropped = image_masked[y:y + h, x:x + w]
-                # cv2.imshow("croped image", img_cropped)
-                # cv2.waitKey(0)
 
-                extractedInformation = pytesseract.image_to_string(img_cropped)
-                extractedInformation = ' '.join(extractedInformation.split())
-                print("Extracted Text: " + extractedInformation)
+                extractedtext = imageToText(img_cropped)
 
                 with open(textnames[i], encoding="latin-1") as file:
-                    name = file.read()
-                "".join(filter(lambda char: char in string.printable, name))
+                    lines = file.readlines()
+                    painter_name, painting_name = readTextFromFile(lines, 0)
 
-                text = name.split(",", 1)[0]
-                if text.count("'") < 2:
-                    text = (text.split("\""))[1].split("\"")[0]
-                    ''.join(text.split())
-                else:
-                    text = (text.split("'"))[1].split("'")[0]
-                    ''.join(text.split())
-                print("Ground Truth Text: " + text)
-
-                text1 = name.split(",", 1)[1]
-                if text1.count("'") < 2:
-                    text1 = (text1.split("\""))[1].split("\"")[0]
-                    ''.join(text1.split())
-                else:
-                    text1 = (text1.split("'"))[1].split("'")[0]
-                    ''.join(text1.split())
-                print("Ground Truth Text1: " + text1)
-
-                distance = textdistance.hamming.normalized_similarity(extractedInformation, text)
-                distance1 = textdistance.hamming.normalized_similarity(extractedInformation, text1)
+                distance = textdistance.hamming.normalized_similarity(extractedtext, painter_name)
+                distance1 = textdistance.hamming.normalized_similarity(extractedtext, painting_name)
                 distance = max(distance, distance1)
+
             else:
                 distance = 0
 
             print(distance)
             distances.append(distance)
 
-            box = convertBox(x, y, w, h)
+            # box = convertBox(x, y, w, h)
 
-            gt_box = convertBox2(gt_boxes[i][0])
-            iou = bbox_iou(box, gt_box)
+            # gt_box = convertBox2(gt_boxes[i][0])
+            # iou = bbox_iou(box, gt_box)
 
-            # print("iou: ",iou)
-            if box == [0, 0, 0, 0]:
-                counter = counter + 1
-            result.append(iou)
+            # # print("iou: ",iou)
+            # if box == [0, 0, 0, 0]:
+            #     counter = counter + 1
+            # result.append(iou)
 
         # print("Mean iou: ", sum(result) / len(result))
         # print("Iou excluding failed cases: ", sum(result) / (len(result) - counter))
