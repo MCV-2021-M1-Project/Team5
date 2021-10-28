@@ -3,9 +3,8 @@ from __future__ import print_function
 import argparse
 import glob
 import cv2
-import re
+from text_processing import readTextFromFile
 import pickle
-import string
 import numpy as np
 import constants as C
 from average_metrics import bbox_iou
@@ -226,31 +225,6 @@ def imageToText(image):
 
     return text
 
-def readTextFromFile(lines, number=0):
-    text = lines[number]
-    "".join(filter(lambda char: char in string.printable, text))
-
-    painter_name = text.split(",", 1)[0]
-
-    if painter_name.count("'") < 2:
-        painter_name = (painter_name.split("\""))[1].split("\"")[0]
-        ''.join(painter_name.split())
-    else:
-        painter_name = (painter_name.split("'"))[1].split("'")[0]
-        ''.join(painter_name.split())
-    print("Ground Truth Text: " + painter_name)
-
-    painting_name = text.split(",", 1)[1]
-    if painting_name.count("'") < 2:
-        painting_name = (painting_name.split("\""))[1].split("\"")[0]
-        ''.join(painting_name.split())
-    else:
-        painting_name = (painting_name.split("'"))[1].split("'")[0]
-        ''.join(painting_name.split())
-    print("Ground Truth Text1: " + painting_name)
-
-    return painter_name, painting_name
-
 def test():
     # construct the argument parser and parse the arguments
     ap = argparse.ArgumentParser()
@@ -292,7 +266,7 @@ def test():
 
                 with open(textnames[i], encoding="latin-1") as file:
                     lines = file.readlines()
-                    painter_name, painting_name = readTextFromFile(lines, 0)
+                    painter_name, painting_name = readTextFromFile(lines[0])
 
                 distance = textdistance.hamming.normalized_similarity(extractedtext, painter_name)
                 distance1 = textdistance.hamming.normalized_similarity(extractedtext, painting_name)
@@ -303,20 +277,6 @@ def test():
 
             print(distance)
             distances.append(distance)
-
-            # box = convertBox(x, y, w, h)
-
-            # gt_box = convertBox2(gt_boxes[i][0])
-            # iou = bbox_iou(box, gt_box)
-
-            # # print("iou: ",iou)
-            # if box == [0, 0, 0, 0]:
-            #     counter = counter + 1
-            # result.append(iou)
-
-        # print("Mean iou: ", sum(result) / len(result))
-        # print("Iou excluding failed cases: ", sum(result) / (len(result) - counter))
-        # print("Detection failed: ", counter)
 
         print("Mean distance: ", sum(distances) / len(distances))
 

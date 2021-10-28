@@ -10,6 +10,7 @@ import constants as C
 from average_metrics import mapk
 from matplotlib import pyplot as plt
 from denoise_image import denoinseImage
+from text_processing import getImagesGtText
 from histogram_processing import getImagesAndHistograms, compareHistograms, getHistogramForQueryImage, loadAllImages
 
 def parse_args():
@@ -32,19 +33,7 @@ def parse_args():
 def main():
     args = parse_args()
 
-    if args.denoise:
-        filenames = [img for img in glob.glob(args.query_image_folder + "/*"+ ".jpg")]
-        filenames.sort()
-        filenamesGt = [img for img in glob.glob(args.query_image_folder + "/non_augmented/*"+ ".jpg")]
-        filenamesGt.sort()
-        # Load images to a list
-        for ind, img in enumerate(filenames):
-            print('Processing image: ', filenames[ind])
-            n = cv2.imread(img)
-            # Denoising
-            gt = cv2.imread(filenamesGt[ind])
-            dst = denoinseImage(n, gt)
-    elif args.validation_metrics:
+    if args.validation_metrics:
         #read ground truth result (format [[r1],[r2]...])
         with open(args.gt_results, 'rb') as reader:
             gtRes = pickle.load(reader)
@@ -71,11 +60,15 @@ def main():
             with open(histogramsFile, 'wb') as handle:
                 pickle.dump(ddbb_histograms, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
+        #Read the text files for data base
+        ddbb_text = getImagesGtText(args.path)
+
         # query either an image or a folder
         if args.query_image:
             queryImage = cv2.imread(args.query_image)
+            queryImageDenoised = denoinseImage(queryImage)
             filename = args.query_image
-            queryHist, _,_,_ = getHistogramForQueryImage(queryImage, args.color_space, args.mask, filename, args.split, args.extract_text_box)
+            queryHist, _,_,_ = getHistogramForQueryImage(queryImageDenoised, args.color_space, args.mask, filename, args.split, args.extract_text_box)
             allResults = compareHistograms(queryHist, ddbb_histograms)
             # plot K best coincidences
             if args.plot_result:
