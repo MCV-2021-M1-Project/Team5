@@ -175,8 +175,7 @@ def maskToRect(image, mask):
 def getTextBoundingBoxAlone(image):
     mask = getTextBox(image)
     mask, x, y, w, h = maskToRect(image, mask)
-    # print(convertBox3(x, y, w, h))
-    return convertBox(x, y, w, h)
+    return mask
 
 def getTextBoundingBox(imageInput, folder = None, boxes_pkl = None):
     # construct the argument parser and parse the arguments
