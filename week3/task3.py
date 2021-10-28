@@ -255,7 +255,7 @@ def main():
                 if args.extract_text_box:
                     flattened = [np.array(sublist).flatten() for sublist in resultPickleText]
                     resultScore = mapk(gtRes, flattened, args.k_best)
-                    print(f'Texture average precision in Hellinger for k = {args.k_best} is {resultScore}.')
+                    print(f'Text average precision in Hellinger for k = {args.k_best} is {resultScore}.')
             with open('Hellinger_' + args.color_space + '_segments' + str(args.split) + '.pkl', 'wb') as handle:
                 pickle.dump(resultPickleColor, handle, protocol=pickle.HIGHEST_PROTOCOL)
         #--------------------------------------
