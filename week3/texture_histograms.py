@@ -2,17 +2,32 @@ import os
 import cv2
 from matplotlib import pyplot as plt
 import numpy as np
+from skimage.feature import local_binary_pattern
 import constants as C
 from average_metrics import mapk
 from background_processor import backgroundRemoval, intersect_matrices, findElementsInMask
 from extractTextBox import getTextBoundingBoxAlone
 
-def getSingleColorHistogram(image, channels, mask, bins, colorRange, sections = 1, maskPos = []):
+def getSingleTextureHistogram(image, channels, mask, bins, colorRange, sections = 1, maskPos = []):
+    #LBP settings
+    radius = 3 #round(image.shape[0]/100)
+    n_points = 8 #*radius
+    method = "uniform"
+    
+    #Histogram settings
+    bins = [n_points + 2]
+    colorRange = [0, n_points + 2]
+    
+    lbp = local_binary_pattern(image, n_points, radius, method)
+    lbp = np.uint8(lbp)
+
+    plt.imshow(lbp, cmap = 'gray')
+    
     if sections <= 1:
-            # Compute the histogram with color space passed as argument
-            queryHist = cv2.calcHist([image], channels, mask, bins, colorRange)
-            queryHist = cv2.normalize(queryHist, queryHist).flatten()
-            return queryHist
+            # Compute the histogram
+            hist = cv2.calcHist([lbp], channels, mask, bins, colorRange)
+            hist = cv2.normalize(hist, hist).flatten()
+            return hist
     else:
         sectionsMask = np.zeros((image.shape[0], image.shape[1]), dtype="uint8")
         sH = image.shape[0] // sections
@@ -24,36 +39,30 @@ def getSingleColorHistogram(image, channels, mask, bins, colorRange, sections = 
             sW = sectionsMaskAux.shape[1] // sections
             hStart = maskPos[0][0]
             wStart = maskPos[0][1]
-            # print(f'Size img: {image.shape}, auxMaskShape: {sectionsMaskAux.shape}, regSize: {sH}-{sW}, {hStart}-{wStart}')
         auxHists = []
         for row in range(sections):
             for column in range(sections):
                 sectionsMask[(hStart+sH*row):(sH*row + hStart + sH),(wStart+sW*column):(sW*column + wStart + sW)] = 255
                 if mask is not None:
                     sectionsMask = intersect_matrices(sectionsMask, mask)
-                # plt.imshow(sectionsMask, cmap='gray')
-                # plt.show()
-                # cv2.waitKey(0)
-                auxhist = cv2.calcHist([image], channels, sectionsMask, bins, colorRange)
+                auxhist = cv2.calcHist([lbp], channels, sectionsMask, bins, colorRange)
                 auxHists.extend(cv2.normalize(auxhist, auxhist).flatten())
                 sectionsMask[:,:] = 0
         return auxHists
 
-
-def getColorHistogram(image, channels, mask, bins, colorRange, sections = 1, textBoxImage = None):
+def getTextureHistogram(image, channels, mask, bins, colorRange, sections = 1, textBoxImage = None):
     """
     Compute the histogram for a given image and with the specified arguments for the histogram.
     If sections is bigger than 1 the image will be splited into sections*sections before computing.
     """
-
     #Check the mask to figure out if there are more than one pictures in the image
     if mask is None:
         if textBoxImage is not None:
-            mask = getTextBoundingBoxAlone(textBoxImage)
-            # mask = np.zeros((image.shape[0], image.shape[1]), dtype="uint8")
-            # mask[box[1]:box[3],box[0]:box[2]] = 255
-            # mask = cv2.bitwise_not(mask)
-        return getSingleColorHistogram(image, channels, mask, bins, colorRange, sections)
+            box = getTextBoundingBoxAlone(textBoxImage)
+            mask = np.zeros((image.shape[0], image.shape[1]), dtype="uint8")
+            mask[box[1]:box[3],box[0]:box[2]] = 255
+            mask = cv2.bitwise_not(mask)
+        return getSingleTextureHistogram(image, channels, mask, bins, colorRange, sections)
     else:
         elems, start, end = findElementsInMask(mask)
         if elems > 1:
@@ -63,72 +72,41 @@ def getColorHistogram(image, channels, mask, bins, colorRange, sections = 1, tex
                 auxMask[start[num][0]:end[num][0],start[num][1]:end[num][1]] = 255
                 if textBoxImage is not None:
                     res = cv2.bitwise_and(textBoxImage,textBoxImage,mask = auxMask)
-                    textMask = getTextBoundingBoxAlone(res)
+                    box = getTextBoundingBoxAlone(res)
+                    textMask = np.zeros(mask.shape, dtype="uint8")
+                    textMask[box[1]:box[3],box[0]:box[2]] = 255
                     auxMask = cv2.bitwise_and(auxMask,auxMask,mask = cv2.bitwise_not(textMask))
-                histograms.append(getSingleColorHistogram(image, channels, auxMask, bins, colorRange, sections, [start[num], end[num]]))
+                histograms.append(getSingleTextureHistogram(image, channels, auxMask, bins, colorRange, sections, [start[num], end[num]]))
             return histograms
         else:
-            return getSingleColorHistogram(image, channels, mask, bins, colorRange, sections)
+            return getSingleTextureHistogram(image, channels, mask, bins, colorRange, sections)
 
-
-def plotHistogram(hist):
-    # plot the histogram
-    plt.figure()
-    plt.title("Histogram")
-    plt.xlabel("Bins")
-    plt.ylabel("% of Pixels")
-    plt.plot(hist)
-    plt.xlim([0, 256])
-
-    plt.show()
-
-def loadAllImages(folderPath):
-    
-    ddbb_images = {}
-    
-    for img in filter(lambda el: el.find('.jpg') != -1, os.listdir(folderPath)):
-        filename = folderPath + '/' + img
-        image = cv2.imread(filename)
-
-        # Store the image as RGB for later plot
-        ddbb_images[filename] = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-    return ddbb_images
-
-def getColorHistograms(folderPath, colorSpace, sections = 1):
+def getTextureHistograms(folderPath, sections = 1):
     """
-    Returns a dict that contain color histograms for each ddbb image
+    Returns a dict that contains texture histograms for each ddbb image
 
     :param folderPath: relative path to the images to process
-    :param colorSpace: color space to compute the histogramas of the images
 
-    :return: 1- Dictionary with the histograms for all the images loaded ({'imageRelativePath': [histogram]})
+    :return: 1- Dictionary with the texture histograms for all the images loaded ({'imageRelativePath': [histogram]})
     """ 
-    ddbb_color_histograms = {}
+    ddbb_texture_histograms = {}
     
     for img in filter(lambda el: el.find('.jpg') != -1, os.listdir(folderPath)):
         filename = folderPath + '/' + img
         image = cv2.imread(filename)
         
-        # Equalizing Saturation and Lightness via HSV
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-        h, s, v, = cv2.split(image)
-        eqV = cv2.equalizeHist(v)
-        image = cv2.merge((h, s, eqV))
-        image = cv2.cvtColor(image, cv2.COLOR_HSV2BGR)
-        
         # Changing color space
-        aux = cv2.cvtColor(image, C.OPENCV_COLOR_SPACES[colorSpace][0])
+        aux = cv2.cvtColor(image, C.OPENCV_COLOR_SPACES["Gray"][0])
         
-        channels, mask, bins, colorRange = C.OPENCV_COLOR_SPACES[colorSpace][1:]
+        channels, mask, bins, colorRange = C.OPENCV_COLOR_SPACES["Gray"][1:]
 
-        hist = getColorHistogram(aux, channels, mask, bins, colorRange, sections)
+        hist = getTextureHistogram(aux, channels, mask, bins, colorRange, sections)
 
-        ddbb_color_histograms[filename] = hist
+        ddbb_texture_histograms[filename] = hist
         
-    return ddbb_color_histograms
-    
-def getColorHistogramForQueryImage(queryImage, colorSpace, mask_check, filename, sections = 1, textBox = False):
+    return ddbb_texture_histograms
+
+def getTextureHistogramForQueryImage(queryImage, colorSpace, mask_check, filename, sections = 1, textBox = False):
     originalImage = queryImage
 
     # Apply mask if applicable
@@ -137,29 +115,21 @@ def getColorHistogramForQueryImage(queryImage, colorSpace, mask_check, filename,
     if mask_check:
         backgroundMask, precision, recall, F1_measure = backgroundRemoval(queryImage, filename)
         # backgroundMask = cv2.imread(filename.replace('jpg','png'), cv2.IMREAD_GRAYSCALE)
-        
-    # Equalizing Saturation and Lightness via HSV
-    queryImage = cv2.cvtColor(queryImage, cv2.COLOR_BGR2HSV)
-    h, s, v, = cv2.split(queryImage)
-    eqV = cv2.equalizeHist(v)
-    queryImage = cv2.merge((h, s, eqV))
-    queryImage = cv2.cvtColor(queryImage, cv2.COLOR_HSV2BGR)
     
     # Change to the color space that is going to be used to compare histograms
-    queryImageColorSpace = cv2.cvtColor(queryImage, C.OPENCV_COLOR_SPACES[colorSpace][0])
-    channels, mask, bins, colorRange = C.OPENCV_COLOR_SPACES[colorSpace][1:]
+    queryImageColorSpace = cv2.cvtColor(queryImage, C.OPENCV_COLOR_SPACES["Gray"][0])
+    channels, mask, bins, colorRange = C.OPENCV_COLOR_SPACES["Gray"][1:]
  
-
-    # Compute the histogram with color space passed as argument
+    # Compute the histogram
     queryHist = None
     if textBox:
-        queryHist = getColorHistogram(queryImageColorSpace, channels, backgroundMask, bins, colorRange, sections, originalImage)
+        queryHist = getTextureHistogram(queryImageColorSpace, channels, backgroundMask, bins, colorRange, sections, originalImage)
     else:
-        queryHist = getColorHistogram(queryImageColorSpace, channels, backgroundMask, bins, colorRange, sections, None)
+        queryHist = getTextureHistogram(queryImageColorSpace, channels, backgroundMask, bins, colorRange, sections, None)
     
     return queryHist, precision, recall, F1_measure
 
-def compareColorHistograms(queryHist, ddbb_histograms):
+def compareTextureHistograms(queryHist, ddbb_histograms):
     """
     Compare the histograms of ddbb_histograms with the one for queryImage and returns
     a dictionary of diferent methods
@@ -197,6 +167,7 @@ def getDistances(comparisonMethod, baseImageHistograms, queryImageHistogram):
             histBase = cv2.UMat(np.array(hist, dtype=np.float32))
             distance = cv2.compareHist(query, histBase, comparisonMethod)
         else:
+            #print(len(queryImageHistogram), len(hist))
             distance = cv2.compareHist(queryImageHistogram, hist, comparisonMethod)
         # distance = chi2_distance(hist, queryImageHistogram)
         results[k] = distance
