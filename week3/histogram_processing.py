@@ -153,23 +153,7 @@ def getImagesAndHistograms(folderPath, colorSpace, sections = 1):
     return ddbb_images, ddbb_histograms
 
 
-
-def compareHistograms(queryImage, colorSpace, mask_check, ddbb_histograms, filename, sections = 1, textBox = False):
-    """
-    Compare the histograms of ddbb_histograms with the one for queryImage and returns
-    a dictionary of diferent methods
-
-    :param queryImage: image to look for in ddbb_histograms
-    :param colorSpace: color space to compute the histogramas of the query image
-    :param mask_check: if true tried to remove the background from queryImage
-    :param ddbb_histograms: dictionary with the histograms of the images where queryImage is going to be searched
-    :param filename: if mask_check is true it's used to load the gt mask and compute the quality of the computed mask
-
-    :return: 1- Dictionary with all the distances for queryImage ordered for different Methods (format: {'MethodName': [Distances...]})
-             2- precsion of the mask computed if mask_check and filename has a png with the ground truth, -1 othewise
-             3- recall of the mask computed if mask_check and filename has a png with the ground truth, -1 othewise
-             4- f1-measure of the mask computed if mask_check and filename has a png with the ground truth, -1 othewise
-    """ 
+def getHistogramForQueryImage(queryImage, colorSpace, mask_check, filename, sections = 1, textBox = False):
     originalImage = queryImage
     # Denoising query image using Gaussian blur
     queryImage = cv2.GaussianBlur(queryImage,(3,3), 0)
@@ -194,10 +178,26 @@ def compareHistograms(queryImage, colorSpace, mask_check, ddbb_histograms, filen
  
 
     # Compute the histogram with color space passed as argument
+    queryHist = None
     if textBox:
         queryHist = getHistogram(queryImageColorSpace, channels, backgroundMask, bins, colorRange, sections, originalImage)
     else:
         queryHist = getHistogram(queryImageColorSpace, channels, backgroundMask, bins, colorRange, sections, None)
+    
+    return queryHist, precision, recall, F1_measure
+    
+
+
+def compareHistograms(queryHist, ddbb_histograms):
+    """
+    Compare the histograms of ddbb_histograms with the one for queryImage and returns
+    a dictionary of diferent methods
+
+    :param queryHist: histogram of queryImage to search
+    :param ddbb_histograms: dictionary with the histograms of the images where queryImage is going to be searched
+
+    :return: Dictionary with all the distances for queryImage ordered
+    """ 
     
     shapeQueryHist = np.shape(queryHist)
 
@@ -213,7 +213,7 @@ def compareHistograms(queryImage, colorSpace, mask_check, ddbb_histograms, filen
         # sort the results
         allResults[0] = sorted([(v, k) for (k, v) in results.items()], reverse=False)
         
-    return allResults, precision, recall, F1_measure
+    return allResults
 
 
 

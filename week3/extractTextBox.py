@@ -178,7 +178,7 @@ def getTextBoundingBoxAlone(image):
     # print(convertBox3(x, y, w, h))
     return convertBox(x, y, w, h)
 
-def getTextBoundingBox(image, folder = None, boxes_pkl = None):
+def getTextBoundingBox(imageInput, folder = None, boxes_pkl = None):
     # construct the argument parser and parse the arguments
 
     with open(boxes_pkl, 'rb') as reader:
@@ -215,7 +215,7 @@ def getTextBoundingBox(image, folder = None, boxes_pkl = None):
         print("Detection failed: ", counter)
 
     else:
-        imageBGR = cv2.imread(image)
+        imageBGR = cv2.imread(imageInput)
         mask = getTextBox(imageBGR)
         mask, x, y, w, h = maskToRect(imageBGR, mask)
         return convertBox(x, y, w, h)
