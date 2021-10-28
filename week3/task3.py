@@ -51,7 +51,9 @@ def main():
     else:
         #---------PREPARING DDBB DATA----------
         #Loading DDBB images
-        ddbb_images = loadAllImages(args.path)
+        if args.plot_result:
+            print('Loading all images for ploting...')
+            ddbb_images = loadAllImages(args.path)
         
         #Loading or computing COLOR histograms for DDBB
         colorHistogramsFile = f'ddbb_color_histograms_{args.color_space}_segments{args.split}.pkl'
@@ -148,9 +150,9 @@ def main():
                 componentsTexture = getTextureHistogramForQueryImage(queryImage, args.color_space, args.mask, filename, args.split, args.extract_text_box)
                 allResultsTexture = compareTextureHistograms(componentsTexture[0], ddbb_texture_histograms)
                 
-                img_cropped = getTextAlone(components[0])
-                query_text = imageToText(img_cropped)
-                textResults = compareText(query_text, ddbb_text)
+                # img_cropped = getTextAlone(components[0])
+                # query_text = imageToText(img_cropped)
+                # textResults = compareText(query_text, ddbb_text)
 
 
                 #Add the best k pictures to the array that is going to be exported as pickle
@@ -200,118 +202,6 @@ def main():
             with open('Hellinger_' + args.color_space + '_segments' + str(args.split) + '.pkl', 'wb') as handle:
                 pickle.dump(resultPickleColor, handle, protocol=pickle.HIGHEST_PROTOCOL)
         #--------------------------------------
-
-# =============================================================================
-# def main():
-#     args = parse_args()
-# 
-#     if args.validation_metrics:
-#         #read ground truth result (format [[r1],[r2]...])
-#         with open(args.gt_results, 'rb') as reader:
-#             gtRes = pickle.load(reader)
-# 
-#         #read ground result to compare (format [[r1],[r2]...])
-#         with open(args.computed_results, 'rb') as reader:
-#             computedRes = pickle.load(reader)
-#         
-#         resultScore = mapk(gtRes, computedRes, args.k_best)
-#         print(f'Average precision in {args.computed_results} for k = {args.k_best} is {resultScore}.')
-#         
-#     else:
-#         colorHistogramsFile = f'ddbb_histograms_{args.color_space}_segments{args.split}.pkl'
-#         if os.path.exists(colorHistogramsFile):
-#             #Load histograms for DB, they are always the same for a space color and split level
-#             with open(colorHistogramsFile, 'rb') as reader:
-#                 print('Load existing histograms...')
-#                 ddbb_histograms = pickle.load(reader)
-#             if args.plot_result:
-#                 ddbb_images = loadAllImages(args.path)
-#         else:
-#             ddbb_images, ddbb_histograms = getImagesAndHistograms(args.path, args.color_space, args.split)
-#             #Save histograms for next time
-#             with open(colorHistogramsFile, 'wb') as handle:
-#                 pickle.dump(ddbb_histograms, handle, protocol=pickle.HIGHEST_PROTOCOL)
-# 
-#         # query either an image or a folder
-#         if args.query_image:
-#             queryImage = cv2.imread(args.query_image)
-#             filename = args.query_image
-#             comp = compareHistograms(queryImage, args.color_space, args.mask, ddbb_histograms, filename, args.split)
-#             allResults = comp[0]
-# 
-#             # plot K best coincidences
-#             if args.plot_result:
-#                 # change the color space to RGB to plot the image later
-#                 queryImageRGB = cv2.cvtColor(queryImage, cv2.COLOR_BGR2RGB)
-#                 plotResults(allResults, args.k_best, ddbb_images, queryImageRGB)
-# 
-#         elif args.query_image_folder:
-#             # Sort query images in alphabetical order
-#             filenames = [img for img in glob.glob(args.query_image_folder + "/*"+ ".jpg")]
-#             filenames.sort()
-# 
-#             # Load images to a list
-#             images = []
-#             for img in filenames:
-#                 n = cv2.imread(img)
-#                 images.append(n)
-# 
-#             # Initialize result containers
-#             resultPickle = []
-#             precisionList = []
-#             recallList = []
-#             F1List = []
-#             
-#             
-#             for i, queryImage in enumerate(images):
-#                 print('Processing image: ', filenames[i])
-#                 filename = filenames[i]
-# 
-#                 comp = compareHistograms(queryImage, args.color_space, args.mask, ddbb_histograms, filename, args.split, args.extract_text_box)
-#                 allResults = comp[0]
-# 
-#                 #Add the best k pictures to the array that is going to be exported as pickle
-#                 bestPictures = []
-#                 bestAux = []
-#                 for key, results in allResults.items():
-#                     for score, name in results[0:args.k_best]:
-#                         bestAux.append(int(Path(name).stem.split('_')[1]))
-#                     bestPictures.append(bestAux)
-#                 resultPickle.append(bestPictures)
-#                 
-#                 precisionList.append(comp[1])
-#                 recallList.append(comp[2])
-#                 F1List.append(comp[3])
-#                 
-#                 if args.plot_result:
-#                     # change the color space to RGB to plot the image later
-#                     queryImageRGB = cv2.cvtColor(queryImage, cv2.COLOR_BGR2RGB)
-#                     plotResults(allResults, args.k_best, ddbb_images, queryImageRGB)
-#             
-#             # Mask evaluation results
-#             if args.mask and os.path.exists(args.gt_results):
-#                 avgPrecision = sum(precisionList)/len(precisionList)
-#                 print(f'Average precision of masks is {avgPrecision}.')
-#                 avgRecall = sum(recallList)/len(recallList)
-#                 print(f'Average recall of masks is {avgRecall}.')
-#                 avgF1 = sum(F1List)/len(F1List)
-#                 print(f'Average F1-measure of masks is {avgF1}.')
-# 
-#             #Result export
-#             gtRes = None
-#             if os.path.exists(args.gt_results):
-#                 with open(args.gt_results, 'rb') as reader:
-#                     gtRes = pickle.load(reader)
-# 
-#             if gtRes is not None:
-#                 flattened = [np.array(sublist).flatten() for sublist in resultPickle]
-#                 resultScore = mapk(gtRes, flattened, args.k_best)
-#                 print(f'Average precision in Hellinger for k = {args.k_best} is {resultScore}.')
-#             with open('Hellinger_' + args.color_space + '_segments' + str(args.split) + '.pkl', 'wb') as handle:
-#                 pickle.dump(resultPickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
-# =============================================================================
-
-
 
 if __name__ == "__main__":
     main()

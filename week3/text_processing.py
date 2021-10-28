@@ -7,7 +7,7 @@ import textdistance
 def imageToText(image):
     text = pytesseract.image_to_string(image)
     text = ' '.join(text.split())
-    print("Extracted Text: " + text)
+    # print("Extracted Text: " + text)
 
     return text
 
@@ -15,13 +15,13 @@ def getImagesGtText(path):
     filenames = [img for img in glob.glob(path + "/*"+ ".txt")]
     filenames.sort()
     ddbb_texts = {}
-    print(filenames)
     for ind, filename in enumerate(filenames):
         file1 = open(filename, 'r')
         Lines = file1.readlines()
         ddbb_texts[filename.replace('.txt', '.jpg')] = []
-        for i, line in enumerate(Lines):
-            ddbb_texts[filename.replace('.txt', '.jpg')].append(readTextFromFile(line))
+        if len(Lines) >= 1 and Lines[0][0] != '\n':
+            for i, line in enumerate(Lines):
+                ddbb_texts[filename.replace('.txt', '.jpg')].append(readTextFromFile(line))
 
     return ddbb_texts
 
