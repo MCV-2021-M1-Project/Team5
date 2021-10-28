@@ -176,6 +176,15 @@ def getTextBoundingBoxAlone(image):
     mask, x, y, w, h = maskToRect(image, mask)
     return mask
 
+def getTextAlone(image):
+    mask = getTextBox(image)
+    mask, x, y, w, h = maskToRect(image, mask)
+    if w > 0 and h > 0:
+        img_cropped = image[y:y + h, x:x + w]
+    else:
+        img_cropped = image
+    return img_cropped
+
 def getTextBoundingBox(imageInput, folder = None, boxes_pkl = None):
     # construct the argument parser and parse the arguments
 
@@ -217,13 +226,6 @@ def getTextBoundingBox(imageInput, folder = None, boxes_pkl = None):
         mask = getTextBox(imageBGR)
         mask, x, y, w, h = maskToRect(imageBGR, mask)
         return convertBox(x, y, w, h)
-
-def imageToText(image):
-    text = pytesseract.image_to_string(image)
-    text = ' '.join(text.split())
-    print("Extracted Text: " + text)
-
-    return text
 
 def test():
     # construct the argument parser and parse the arguments

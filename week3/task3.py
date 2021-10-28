@@ -10,7 +10,8 @@ import constants as C
 from average_metrics import mapk
 from matplotlib import pyplot as plt
 from denoise_image import denoinseImage
-from text_processing import getImagesGtText
+from text_processing import getImagesGtText, compareText, imageToText
+from extractTextBox import getTextAlone
 from histogram_processing import getImagesAndHistograms, compareHistograms, getHistogramForQueryImage, loadAllImages
 
 def parse_args():
@@ -100,11 +101,18 @@ def main():
 
                 components = getHistogramForQueryImage(queryImage, args.color_space, args.mask, filename, args.split, args.extract_text_box)
 
-                allResults = compareHistograms(components[0], ddbb_histograms)
+                colorResults = compareHistograms(components[0], ddbb_histograms)
+
+                img_cropped = getTextAlone(components[0])
+                query_text = imageToText(img_cropped)
+                textResults = compareText(query_text, ddbb_text)
 
                 #Add the best k pictures to the array that is going to be exported as pickle
                 bestPictures = []
                 bestAux = []
+
+                allResults = {}
+
                 for key, results in allResults.items():
                     for score, name in results[0:args.k_best]:
                         bestAux.append(int(Path(name).stem.split('_')[1]))
