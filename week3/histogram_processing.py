@@ -1,9 +1,10 @@
+import enum
 import os
 import cv2
 from matplotlib import pyplot as plt
 import numpy as np
 import constants as C
-from average_metrics import mapk
+from average_metrics import getDistances
 from background_processor import backgroundRemoval, intersect_matrices, findElementsInMask
 from extractTextBox import getTextBoundingBoxAlone
 
@@ -40,35 +41,23 @@ def getSingleColorHistogram(image, channels, mask, bins, colorRange, sections = 
         return auxHists
 
 
-def getColorHistogram(image, channels, mask, bins, colorRange, sections = 1, textBoxImage = None):
+def getColorHistogram(image, channels, masks, startMasks, endMasks, bins, colorRange, sections = 1):
     """
     Compute the histogram for a given image and with the specified arguments for the histogram.
     If sections is bigger than 1 the image will be splited into sections*sections before computing.
     """
 
     #Check the mask to figure out if there are more than one pictures in the image
-    if mask is None:
-        if textBoxImage is not None:
-            mask = getTextBoundingBoxAlone(textBoxImage)
-            # mask = np.zeros((image.shape[0], image.shape[1]), dtype="uint8")
-            # mask[box[1]:box[3],box[0]:box[2]] = 255
-            # mask = cv2.bitwise_not(mask)
-        return getSingleColorHistogram(image, channels, mask, bins, colorRange, sections)
+    if len(masks) > 0:
+        histograms = []
+        for ind, mask in enumerate(masks):
+            maskPos = []
+            if len(startMasks) > 0:
+                maskPos = [startMasks[ind], endMasks[ind]]
+            histograms.append(getSingleColorHistogram(image, channels, mask, bins, colorRange, sections, maskPos))
+        return histograms
     else:
-        elems, start, end = findElementsInMask(mask)
-        if elems > 1:
-            histograms = []
-            for num in range(elems):
-                auxMask = np.zeros(mask.shape, dtype="uint8")
-                auxMask[start[num][0]:end[num][0],start[num][1]:end[num][1]] = 255
-                if textBoxImage is not None:
-                    res = cv2.bitwise_and(textBoxImage,textBoxImage,mask = auxMask)
-                    textMask = getTextBoundingBoxAlone(res)
-                    auxMask = cv2.bitwise_and(auxMask,auxMask,mask = cv2.bitwise_not(textMask))
-                histograms.append(getSingleColorHistogram(image, channels, auxMask, bins, colorRange, sections, [start[num], end[num]]))
-            return histograms
-        else:
-            return getSingleColorHistogram(image, channels, mask, bins, colorRange, sections)
+        return getSingleColorHistogram(image, channels, None, bins, colorRange, sections)
 
 
 def plotHistogram(hist):
@@ -122,22 +111,13 @@ def getColorHistograms(folderPath, colorSpace, sections = 1):
         
         channels, mask, bins, colorRange = C.OPENCV_COLOR_SPACES[colorSpace][1:]
 
-        hist = getColorHistogram(aux, channels, mask, bins, colorRange, sections)
+        hist = getSingleColorHistogram(aux, channels, None, bins, colorRange, sections, [])
 
         ddbb_color_histograms[filename] = hist
         
     return ddbb_color_histograms
     
-def getColorHistogramForQueryImage(queryImage, colorSpace, mask_check, filename, sections = 1, textBox = False):
-    originalImage = queryImage
-
-    # Apply mask if applicable
-    backgroundMask = None
-    precision, recall, F1_measure = -1, -1, -1
-    if mask_check:
-        backgroundMask, precision, recall, F1_measure = backgroundRemoval(queryImage, filename)
-        # backgroundMask = cv2.imread(filename.replace('jpg','png'), cv2.IMREAD_GRAYSCALE)
-        
+def getColorHistogramForQueryImage(queryImage, colorSpace, backgroundMasks, startMasks, endMasks, sections = 1):        
     # Equalizing Saturation and Lightness via HSV
     queryImage = cv2.cvtColor(queryImage, cv2.COLOR_BGR2HSV)
     h, s, v, = cv2.split(queryImage)
@@ -149,15 +129,10 @@ def getColorHistogramForQueryImage(queryImage, colorSpace, mask_check, filename,
     queryImageColorSpace = cv2.cvtColor(queryImage, C.OPENCV_COLOR_SPACES[colorSpace][0])
     channels, mask, bins, colorRange = C.OPENCV_COLOR_SPACES[colorSpace][1:]
  
-
     # Compute the histogram with color space passed as argument
-    queryHist = None
-    if textBox:
-        queryHist = getColorHistogram(queryImageColorSpace, channels, backgroundMask, bins, colorRange, sections, originalImage)
-    else:
-        queryHist = getColorHistogram(queryImageColorSpace, channels, backgroundMask, bins, colorRange, sections, None)
+    queryHist = getColorHistogram(queryImageColorSpace, channels, backgroundMasks, startMasks, endMasks, bins, colorRange, sections)
     
-    return queryHist, precision, recall, F1_measure
+    return queryHist
 
 def compareColorHistograms(queryHist, ddbb_histograms):
     """
@@ -185,19 +160,3 @@ def compareColorHistograms(queryHist, ddbb_histograms):
         allResults[0] = sorted([(v, k) for (k, v) in results.items()], reverse=False)
         
     return allResults
-
-def getDistances(comparisonMethod, baseImageHistograms, queryImageHistogram):
-    # loop over the index
-    results = {}
-    for (k, hist) in baseImageHistograms.items():
-        # compute the distance between the two histograms
-        # using the method and update the results dictionary
-        if not isinstance(queryImageHistogram, np.ndarray):
-            query = cv2.UMat(np.array(queryImageHistogram, dtype=np.float32))
-            histBase = cv2.UMat(np.array(hist, dtype=np.float32))
-            distance = cv2.compareHist(query, histBase, comparisonMethod)
-        else:
-            distance = cv2.compareHist(queryImageHistogram, hist, comparisonMethod)
-        # distance = chi2_distance(hist, queryImageHistogram)
-        results[k] = distance
-    return results

@@ -4,6 +4,9 @@ import numpy as np
 import pytesseract
 import textdistance
 
+pytesseract.pytesseract.tesseract_cmd = r'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'
+
+
 def imageToText(image):
     text = pytesseract.image_to_string(image)
     text = ' '.join(text.split())
@@ -36,7 +39,7 @@ def readTextFromFile(text):
     else:
         painter_name = (painter_name.split("'"))[1].split("'")[0]
         ''.join(painter_name.split())
-    print("Ground Truth Text: " + painter_name)
+    # print("Ground Truth Text: " + painter_name)
 
     painting_name = text.split(",", 1)[1]
     if painting_name.count("'") < 2:
@@ -45,7 +48,7 @@ def readTextFromFile(text):
     else:
         painting_name = (painting_name.split("'"))[1].split("'")[0]
         ''.join(painting_name.split())
-    print("Ground Truth Text1: " + painting_name)
+    # print("Ground Truth Text1: " + painting_name)
 
     return painter_name, painting_name
 
@@ -63,15 +66,15 @@ def compareText(query_text, ddbb_text):
 
     allResults = {}
     # Compute the distance to DDBB images with Hellinger distance metric
-    if len(np.shape(query_text)) > 1:
-        for idx, hist in enumerate(query_text):
-            results = getTextDistances(query_text, ddbb_text)
+    if len(query_text) > 1:
+        for idx, text in enumerate(query_text):
+            results = getTextDistances(text, ddbb_text)
             # sort the results
-            allResults[idx] = sorted([(v, k) for (k, v) in results.items()], reverse=False)
+            allResults[idx] = results
     else:
         results = getTextDistances(query_text, ddbb_text)
         # sort the results
-        allResults[0] = sorted([(v, k) for (k, v) in results.items()], reverse=False)
+        allResults[0] = results
 
     return allResults
 
@@ -81,9 +84,11 @@ def getTextDistances(query_text, ddbb_text):
     for (k, tuple) in ddbb_text.items():
         # compute the distance between the two histograms
         # using the method and update the results dictionary
-        distance = textdistance.hamming.normalized_similarity(query_text, tuple[0])
-        distance1 = textdistance.hamming.normalized_similarity(query_text, tuple[1])
-        distance = max(distance, distance1)
+        distance = 0
+        if len(tuple) > 0:
+            distance = textdistance.hamming.normalized_similarity(query_text, tuple[0][0])
+            distance1 = textdistance.hamming.normalized_similarity(query_text, tuple[0][1])
+            distance = max(distance, distance1)
         # distance = chi2_distance(hist, queryImageHistogram)
         results[k] = distance
     sorted_results = sorted([(v, k) for (k, v) in results.items()], reverse=False)

@@ -10,10 +10,11 @@ import constants as C
 from average_metrics import mapk
 from matplotlib import pyplot as plt
 from denoise_image import denoinseImage
-from histogram_processing import getColorHistograms, compareColorHistograms, getColorHistogramForQueryImage, getDistances, loadAllImages
+from histogram_processing import getColorHistograms, compareColorHistograms, getColorHistogramForQueryImage, loadAllImages
 from texture_histograms import getTextureHistograms, compareTextureHistograms, getTextureHistogramForQueryImage
 from text_processing import getImagesGtText, compareText, imageToText
-from extractTextBox import getTextAlone
+from extractTextBox import getTextBoundingBoxAlone, getTextAlone
+from background_processor import backgroundRemoval, findElementsInMask
 
 
 def parse_args():
@@ -98,7 +99,7 @@ def main():
             queryColorHist, _,_,_ = getColorHistogramForQueryImage(queryImage, args.color_space, args.mask, filename, args.split, args.extract_text_box)
             allResultsColor = compareColorHistograms(queryColorHist, ddbb_color_histograms)
             
-            #Plot K best coincidences [B R O K E N] <------------
+            #Plot K best coincidences <------------
 
             if args.plot_result:
                 #Change the color space to RGB to plot the image later
@@ -123,18 +124,59 @@ def main():
             #Initialize result containers
             resultPickleColor = []
             resultPickleTexture = []
+            resultPickleText = []
             precisionList = []
             recallList = []
             F1List = []
             
             
-            for i, queryImage in enumerate(images):
+            for i, inputImage in enumerate(images):
                 print('Processing image: ', filenames[i])
                 filename = filenames[i]
+                queryImage = denoinseImage(inputImage)  
+                # Find mask if applicable  
+                backgroundMask = None
+                precision, recall, F1_measure = -1, -1, -1
+                if args.mask:
+                    backgroundMask, precision, recall, F1_measure = backgroundRemoval(queryImage, filename)
+                    # backgroundMask = cv2.imread(filename.replace('jpg','png'), cv2.IMREAD_GRAYSCALE)
+                
+                #Find text boxes and their masks if needed
+                masks = []
+                textBoxMasks = []
+                textImages = []
+                start, end = [], []
+                if backgroundMask is None:
+                    if args.extract_text_box:
+                        textImage, textBoxMask = getTextAlone(queryImage)
+                        textBoxMasks.append(textBoxMask)
+                        textImages.append(textImage)
+                        backgroundMask = cv2.bitwise_not(textBoxMask)
+                        masks.append(backgroundMask)
+                else:
+                    elems, start, end = findElementsInMask(backgroundMask)
+                    if elems > 1:
+                        for num in range(elems):
+                            auxMask = np.zeros(backgroundMask.shape, dtype="uint8")
+                            auxMask[start[num][0]:end[num][0],start[num][1]:end[num][1]] = 255
+                            if args.extract_text_box:
+                                res = cv2.bitwise_and(queryImage,queryImage,mask = auxMask)
+                                textImage, textBoxMask = getTextAlone(queryImage)
+                                textBoxMasks.append(textBoxMask)
+                                textImages.append(textImage)
+                                auxMask = cv2.bitwise_and(auxMask,auxMask,mask = cv2.bitwise_not(textBoxMask))
+                            masks.append(auxMask)
+                    else:
+                        if args.extract_text_box:
+                            res = cv2.bitwise_and(queryImage,queryImage,mask = backgroundMask)
+                            textMask = getTextBoundingBoxAlone(res)
+                            auxMask = cv2.bitwise_and(backgroundMask,backgroundMask,mask = cv2.bitwise_not(textMask))
+                            masks.append(auxMask)
+
 
                 #Comparing COLOR histograms
-                componentsColor = getColorHistogramForQueryImage(queryImage, args.color_space, args.mask, filename, args.split, args.extract_text_box)
-                allResultsColor = compareColorHistograms(componentsColor[0], ddbb_color_histograms)
+                queryHistColor = getColorHistogramForQueryImage(queryImage, args.color_space, masks, start, end, args.split)
+                allResultsColor = compareColorHistograms(queryHistColor, ddbb_color_histograms)
 
                 #Add the best k pictures to the array that is going to be exported as pickle
                 bestPictures = []
@@ -147,14 +189,8 @@ def main():
                 #--------------------------
                 
                 #Comparing TEXTURE histograms
-                componentsTexture = getTextureHistogramForQueryImage(queryImage, args.color_space, args.mask, filename, args.split, args.extract_text_box)
-                allResultsTexture = compareTextureHistograms(componentsTexture[0], ddbb_texture_histograms)
-                
-                # img_cropped = getTextAlone(components[0])
-                # query_text = imageToText(img_cropped)
-                # textResults = compareText(query_text, ddbb_text)
-
-
+                queryTextureHist = getTextureHistogramForQueryImage(queryImage, masks, start, end, args.split)
+                allResultsTexture = compareTextureHistograms(queryTextureHist, ddbb_texture_histograms)
                 #Add the best k pictures to the array that is going to be exported as pickle
                 bestPictures = []
                 bestAux = []
@@ -165,10 +201,26 @@ def main():
                 resultPickleTexture.append(bestPictures)
                 #--------------------------
                 
-                #Expanding mask evaluation lists
-                precisionList.append(componentsColor[1])
-                recallList.append(componentsColor[2])
-                F1List.append(componentsColor[3])
+                #Comparing TEXT
+                if args.extract_text_box:
+                    queryTexts = []
+                    for textImg in textImages:
+                        queryTexts.append(imageToText(textImg))
+                    textResults = compareText(queryTexts, ddbb_text)
+
+                    bestPictures = []
+                    bestAux = []
+                    for key, results in textResults.items():
+                        for score, name in results[0:args.k_best]:
+                            bestAux.append(int(Path(name).stem.split('_')[1]))
+                        bestPictures.append(bestAux)
+                    resultPickleText.append(bestPictures)
+
+                
+                #Expanding mask evaluation lists , recall, F1_measure
+                precisionList.append(precision)
+                recallList.append(recall)
+                F1List.append(F1_measure)
                 
                 if args.plot_result:
                     # change the color space to RGB to plot the image later
@@ -199,6 +251,11 @@ def main():
                 flattened = [np.array(sublist).flatten() for sublist in resultPickleTexture]
                 resultScore = mapk(gtRes, flattened, args.k_best)
                 print(f'Texture average precision in Hellinger for k = {args.k_best} is {resultScore}.')
+                #TEXT
+                if args.extract_text_box:
+                    flattened = [np.array(sublist).flatten() for sublist in resultPickleText]
+                    resultScore = mapk(gtRes, flattened, args.k_best)
+                    print(f'Texture average precision in Hellinger for k = {args.k_best} is {resultScore}.')
             with open('Hellinger_' + args.color_space + '_segments' + str(args.split) + '.pkl', 'wb') as handle:
                 pickle.dump(resultPickleColor, handle, protocol=pickle.HIGHEST_PROTOCOL)
         #--------------------------------------

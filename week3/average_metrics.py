@@ -1,6 +1,7 @@
 ## Code extracted from https://github.com/benhamner/Metrics.git
 
 import numpy as np
+import cv2
 
 def apk(actual, predicted, k=10):
     """
@@ -89,3 +90,21 @@ def bbox_iou(bboxA, bboxB):
     
     # return the intersection over union value
     return iou
+
+
+def getDistances(comparisonMethod, baseImageHistograms, queryImageHistogram):
+    # loop over the index
+    results = {}
+    for (k, hist) in baseImageHistograms.items():
+        # compute the distance between the two histograms
+        # using the method and update the results dictionary
+        if not isinstance(queryImageHistogram, np.ndarray):
+            query = cv2.UMat(np.array(queryImageHistogram, dtype=np.float32))
+            histBase = cv2.UMat(np.array(hist, dtype=np.float32))
+            distance = cv2.compareHist(query, histBase, comparisonMethod)
+        else:
+            #print(len(queryImageHistogram), len(hist))
+            distance = cv2.compareHist(queryImageHistogram, hist, comparisonMethod)
+        # distance = chi2_distance(hist, queryImageHistogram)
+        results[k] = distance
+    return results

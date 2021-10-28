@@ -9,11 +9,12 @@ import numpy as np
 import constants as C
 from average_metrics import bbox_iou
 from matplotlib import pyplot as plt
-import pytesseract
 import textdistance
+from text_processing import imageToText
+import pytesseract
 from morphologicalOperations import thresholdImage, openingImage, closingImage, blackHat, topHat, morphologicalGradient, highpass
 
-# pytesseract.pytesseract.tesseract_cmd = r'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'
+pytesseract.pytesseract.tesseract_cmd = r'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'
 
 # convert xywh to box points
 def convertBox(x, y, w, h):
@@ -183,7 +184,7 @@ def getTextAlone(image):
         img_cropped = image[y:y + h, x:x + w]
     else:
         img_cropped = image
-    return img_cropped
+    return img_cropped, mask
 
 def getTextBoundingBox(imageInput, folder = None, boxes_pkl = None):
     # construct the argument parser and parse the arguments
