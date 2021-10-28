@@ -312,5 +312,3 @@ def test():
         image = cv2.imread(args.image)
         mask = getTextBox(image)
         mask, x, y, w, h = maskToRect(image, mask)
-
-test()
