@@ -33,7 +33,7 @@ def parse_args():
     parser.add_argument('-t', '--extract_text_box', type=bool, default=False, help='Set True to extract the text bounding box')
     parser.add_argument('-plt', '--plot_result', type=bool, default=False, help='Set to True to plot results')
     parser.add_argument('-d', '--denoise', type=bool, default=False, help='Denoise query image before processing it')
-    parser.add_argument('-w', '--weights', type=list, default=[0.5, 0.2, 0.3], help='weights for combining descriptors')
+    parser.add_argument('-w', '--weights', type=list, default=[0.8, 0.1, 0.1], help='weights for combining descriptors')
     return parser.parse_args()
 
 def oneTake(x):
@@ -235,11 +235,13 @@ def main():
                     all_result_df["Color"] = all_result_df["Color"].map(oneTake)
                     all_result_df["Texture"] = all_result_df["Texture"].map(oneTake)
 
+                    weights = args.weights
+                    all_result_df["Combined"] = 0
+                    all_result_df["Combined"] = weights[0] * all_result_df["Color"] + weights[1] * all_result_df["Texture"] + weights[0] * all_result_df["Text"]
+
                     print(all_result_df)
-                    all_result_df.to_csv("output.csv")
 
-
-                #---------------------------------------------------
+                #pickel the k best results in lists of list
                 resultPickleColor.append(bestPicturesColor)
                 resultPickleTexture.append(bestPicturesTexture)
                 if args.extract_text_box:
