@@ -56,11 +56,15 @@ def findElementsInMask(mask):
     print(start)
     print(end)
     print('-----------------------')
-    zipped_lists = zip(start, end)
-    sorted_pairs = sorted(zipped_lists, key=sorting_func )
+    if len(start) > 0:
+        zipped_lists = zip(start, end)
+        sorted_pairs = sorted(zipped_lists, key=sorting_func )
 
-    tuples = zip(*sorted_pairs)
-    start, end = [ list(tuple) for tuple in  tuples]
+        tuples = zip(*sorted_pairs)
+        start, end = [ list(tuple) for tuple in  tuples]
+    else:
+        start = [[0, 0]]
+        end = [[np.shape(mask)[0], np.shape(mask)[1]]]
 
     print(start)
     print(end)
