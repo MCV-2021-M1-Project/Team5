@@ -10,7 +10,7 @@ import pickle
 if __name__ == "__main__":
 
     # read args
-    dict_name = 'qst2_text_boxes.pkl'
+    dict_name = 'gt_corresps1.pkl'
 
 
     with open(dict_name, 'rb') as fd:

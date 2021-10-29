@@ -4,7 +4,7 @@ import numpy as np
 import pytesseract
 import textdistance
 
-pytesseract.pytesseract.tesseract_cmd = r'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'
+# pytesseract.pytesseract.tesseract_cmd = r'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'
 
 
 def imageToText(image):
@@ -91,5 +91,5 @@ def getTextDistances(query_text, ddbb_text):
             distance = max(distance, distance1)
         # distance = chi2_distance(hist, queryImageHistogram)
         results[k] = distance
-    sorted_results = sorted([(v, k) for (k, v) in results.items()], reverse=False)
+    sorted_results = sorted([(v, k) for (k, v) in results.items()], reverse=True)
     return sorted_results
