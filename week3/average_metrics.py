@@ -108,3 +108,10 @@ def getDistances(comparisonMethod, baseImageHistograms, queryImageHistogram):
         # distance = chi2_distance(hist, queryImageHistogram)
         results[k] = distance
     return results
+
+def normalizeTupleVector(vect):
+    unzipped_vect = list(zip(*vect))
+    values = np.asarray(unzipped_vect[0])
+    names = np.asarray(unzipped_vect[1])
+    normalized_v = values / np.linalg.norm(values)
+    return zip(normalized_v,names)

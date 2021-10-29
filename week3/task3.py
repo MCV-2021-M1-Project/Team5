@@ -7,7 +7,7 @@ import pickle
 import numpy as np
 from plot import plotResults
 import constants as C
-from average_metrics import mapk
+from average_metrics import mapk, normalizeTupleVector
 from matplotlib import pyplot as plt
 from denoise_image import denoinseImage
 from histogram_processing import getColorHistograms, compareColorHistograms, getColorHistogramForQueryImage, loadAllImages
@@ -179,9 +179,10 @@ def main():
                 allResultsColor = compareColorHistograms(queryHistColor, ddbb_color_histograms)
 
                 #Add the best k pictures to the array that is going to be exported as pickle
-                bestPictures = []
-                bestAux = []
+                bestPictures, bestAux = [], []
+                colorNormalized = {}
                 for key, results in allResultsColor.items():
+                    colorNormalized[key] = normalizeTupleVector(results)
                     for score, name in results[0:args.k_best]:
                         bestAux.append(int(Path(name).stem.split('_')[1]))
                     bestPictures.append(bestAux)
@@ -191,10 +192,12 @@ def main():
                 #Comparing TEXTURE histograms
                 queryTextureHist = getTextureHistogramForQueryImage(queryImage, masks, start, end, args.split)
                 allResultsTexture = compareTextureHistograms(queryTextureHist, ddbb_texture_histograms)
+
                 #Add the best k pictures to the array that is going to be exported as pickle
-                bestPictures = []
-                bestAux = []
+                bestPictures, bestAux = [], []
+                textureNormalized = {}
                 for key, results in allResultsTexture.items():
+                    textureNormalized[key] = normalizeTupleVector(results)
                     for score, name in results[0:args.k_best]:
                         bestAux.append(int(Path(name).stem.split('_')[1]))
                     bestPictures.append(bestAux)
@@ -208,8 +211,7 @@ def main():
                         queryTexts.append(imageToText(textImg))
                     textResults = compareText(queryTexts, ddbb_text)
 
-                    bestPictures = []
-                    bestAux = []
+                    bestPictures, bestAux = [], []
                     for key, results in textResults.items():
                         for score, name in results[0:args.k_best]:
                             bestAux.append(int(Path(name).stem.split('_')[1]))
