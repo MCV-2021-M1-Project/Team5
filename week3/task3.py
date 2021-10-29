@@ -4,6 +4,7 @@ import glob
 import argparse
 from pathlib import Path
 import pickle
+import pandas as pd
 import numpy as np
 from plot import plotResults
 import constants as C
@@ -32,7 +33,11 @@ def parse_args():
     parser.add_argument('-t', '--extract_text_box', type=bool, default=False, help='Set True to extract the text bounding box')
     parser.add_argument('-plt', '--plot_result', type=bool, default=False, help='Set to True to plot results')
     parser.add_argument('-d', '--denoise', type=bool, default=False, help='Denoise query image before processing it')
+    parser.add_argument('-w', '--weights', type=list, default=[0.5, 0.2, 0.3], help='weights for combining descriptors')
     return parser.parse_args()
+
+def oneTake(x):
+    return 1-x
 
 def main():
     args = parse_args()
@@ -133,14 +138,14 @@ def main():
             for i, inputImage in enumerate(images):
                 print('Processing image: ', filenames[i])
                 filename = filenames[i]
-                queryImage = denoinseImage(inputImage)  
-                # Find mask if applicable  
+                queryImage = denoinseImage(inputImage)
+                # Find mask if applicable
                 backgroundMask = None
                 precision, recall, F1_measure = -1, -1, -1
                 if args.mask:
                     backgroundMask, precision, recall, F1_measure = backgroundRemoval(queryImage, filename)
                     # backgroundMask = cv2.imread(filename.replace('jpg','png'), cv2.IMREAD_GRAYSCALE)
-                
+
                 #Find text boxes and their masks if needed
                 masks = []
                 textBoxMasks = []
@@ -173,62 +178,85 @@ def main():
                             auxMask = cv2.bitwise_and(backgroundMask,backgroundMask,mask = cv2.bitwise_not(textMask))
                             masks.append(auxMask)
 
+                #-------------------------------------------
 
                 #Comparing COLOR histograms
                 queryHistColor = getColorHistogramForQueryImage(queryImage, args.color_space, masks, start, end, args.split)
                 allResultsColor = compareColorHistograms(queryHistColor, ddbb_color_histograms)
 
-                #Add the best k pictures to the array that is going to be exported as pickle
-                bestPictures, bestAux = [], []
-                colorNormalized = {}
-                for key, results in allResultsColor.items():
-                    colorNormalized[key] = normalizeTupleVector(results)
-                    for score, name in results[0:args.k_best]:
-                        bestAux.append(int(Path(name).stem.split('_')[1]))
-                    bestPictures.append(bestAux)
-                resultPickleColor.append(bestPictures)
-                #--------------------------
-                
                 #Comparing TEXTURE histograms
                 queryTextureHist = getTextureHistogramForQueryImage(queryImage, masks, start, end, args.split)
                 allResultsTexture = compareTextureHistograms(queryTextureHist, ddbb_texture_histograms)
 
-                #Add the best k pictures to the array that is going to be exported as pickle
-                bestPictures, bestAux = [], []
-                textureNormalized = {}
-                for key, results in allResultsTexture.items():
-                    textureNormalized[key] = normalizeTupleVector(results)
-                    for score, name in results[0:args.k_best]:
-                        bestAux.append(int(Path(name).stem.split('_')[1]))
-                    bestPictures.append(bestAux)
-                resultPickleTexture.append(bestPictures)
-                #--------------------------
-                
-                #Comparing TEXT
+                # Comparing TEXT
                 if args.extract_text_box:
                     queryTexts = []
                     for textImg in textImages:
                         queryTexts.append(imageToText(textImg))
-                    textResults = compareText(queryTexts, ddbb_text)
+                    allResultsText = compareText(queryTexts, ddbb_text)
 
-                    bestPictures, bestAux = [], []
-                    for key, results in textResults.items():
-                        for score, name in results[0:args.k_best]:
-                            bestAux.append(int(Path(name).stem.split('_')[1]))
-                        bestPictures.append(bestAux)
-                    resultPickleText.append(bestPictures)
+                #Add the best k pictures to the array that is going to be exported as pickle
+                bestPicturesColor, bestAuxColor = [], []
+                bestPicturesTexture, bestAuxTexture = [], []
+                bestPicturesText, bestAuxText = [], []
 
-                
+                all_result_df = pd.DataFrame(columns=["Image", "Color", "Texture", "Text"])
+
+                for key, results in allResultsColor.items():
+                    # Creates DataFrame
+                    all_result_df = pd.DataFrame(data=allResultsColor[key], columns=["Color", "Image"])
+                    columns_titles = ["Image", "Color"]
+                    all_result_df = all_result_df.reindex(columns=columns_titles)
+                    all_result_df["Texture"] = 0
+                    all_result_df["Text"] = 0
+
+                    # Add the best k pictures to the array that is going to be exported as pickle
+                    for score, name in results[0:args.k_best]:
+                        bestAuxColor.append(int(Path(name).stem.split('_')[1]))
+                    bestPicturesColor.append(bestAuxColor)
+                    bestPicturesTexture.append(bestAuxTexture)
+
+                    # Add the best k pictures to the array that is going to be exported as pickle
+                    for score, name in allResultsTexture[key][0:args.k_best]:
+                        bestAuxTexture.append(int(Path(name).stem.split('_')[1]))
+
+
+                    for score, name in allResultsTexture[key]:
+                        all_result_df.loc[all_result_df["Image"] == name, "Texture"] = score
+
+                    if args.extract_text_box and bool(allResultsText):
+                        for score, name in allResultsText[key][0:args.k_best]:
+                            bestAuxText.append(int(Path(name).stem.split('_')[1]))
+                        bestPicturesText.append(bestAuxText)
+
+                        for score, name in allResultsText[key]:
+                            all_result_df.loc[all_result_df["Image"] == name, "Text"] = score
+
+                    all_result_df["Color"] = all_result_df["Color"].map(oneTake)
+                    all_result_df["Texture"] = all_result_df["Texture"].map(oneTake)
+
+                    print(all_result_df)
+                    all_result_df.to_csv("output.csv")
+
+
+                #---------------------------------------------------
+                resultPickleColor.append(bestPicturesColor)
+                resultPickleTexture.append(bestPicturesTexture)
+                if args.extract_text_box:
+                    resultPickleText.append(bestPicturesText)
+
+                #--------------------------
+
                 #Expanding mask evaluation lists , recall, F1_measure
                 precisionList.append(precision)
                 recallList.append(recall)
                 F1List.append(F1_measure)
-                
+
                 if args.plot_result:
                     # change the color space to RGB to plot the image later
                     queryImageRGB = cv2.cvtColor(queryImage, cv2.COLOR_BGR2RGB)
                     plotResults(allResultsColor, args.k_best, ddbb_images, queryImageRGB)
-            
+
             # Mask evaluation results
             if args.mask and os.path.exists(args.gt_results):
                 avgPrecision = sum(precisionList)/len(precisionList)

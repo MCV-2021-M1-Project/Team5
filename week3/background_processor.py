@@ -24,8 +24,11 @@ def evaluateMask(gtMask, computedMask):
     falseNegative = np.count_nonzero(intersect_matrices(gtMask, cv2.bitwise_not(computedMask)))
     falsePositive = np.count_nonzero(intersect_matrices(cv2.bitwise_not(gtMask), computedMask))
     # trueNegative = np.count_nonzero(intersect_matrices(cv2.bitwise_not(gtMask), cv2.bitwise_not(computedMask)))
-    
-    precision = truePositive / (truePositive + falsePositive)
+
+    if truePositive + falsePositive is not 0:
+        precision = truePositive / (truePositive + falsePositive)
+    else:
+        precision = 0
     #print('Precision: ' + '{:.2f}'.format(precision))
     recall = truePositive / (truePositive + falseNegative)
     #print('Recall: ' + '{:.2f}'.format(recall))
@@ -53,9 +56,9 @@ def findElementsInMask(mask):
     
     numberElements = numLabels - 1
 
-    print(start)
-    print(end)
-    print('-----------------------')
+    # print(start)
+    # print(end)
+    # print('-----------------------')
     if len(start) > 0:
         zipped_lists = zip(start, end)
         sorted_pairs = sorted(zipped_lists, key=sorting_func )
@@ -66,8 +69,8 @@ def findElementsInMask(mask):
         start = [[0, 0]]
         end = [[np.shape(mask)[0], np.shape(mask)[1]]]
 
-    print(start)
-    print(end)
+    # print(start)
+    # print(end)
     
     return numberElements, start, end
 

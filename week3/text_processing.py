@@ -21,7 +21,7 @@ def getImagesGtText(path):
     filenames.sort()
     ddbb_texts = {}
     for ind, filename in enumerate(filenames):
-        file1 = open(filename, 'r')
+        file1 = open(filename, 'r', encoding="latin-1")
         Lines = file1.readlines()
         ddbb_texts[filename.replace('.txt', '.jpg')] = []
         if len(Lines) >= 1 and Lines[0][0] != '\n':
