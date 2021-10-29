@@ -3,8 +3,10 @@ import string
 import numpy as np
 import pytesseract
 import textdistance
+import platform
 
-# pytesseract.pytesseract.tesseract_cmd = r'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'
+if platform.system() == 'Windows':
+    pytesseract.pytesseract.tesseract_cmd = r'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'
 
 
 def imageToText(image):
@@ -66,15 +68,11 @@ def compareText(query_text, ddbb_text):
 
     allResults = {}
     # Compute the distance to DDBB images with Hellinger distance metric
-    if len(query_text) > 1:
-        for idx, text in enumerate(query_text):
-            results = getTextDistances(text, ddbb_text)
-            # sort the results
-            allResults[idx] = results
-    else:
-        results = getTextDistances(query_text, ddbb_text)
+    for idx, text in enumerate(query_text):
+        results = getTextDistances(text, ddbb_text)
         # sort the results
-        allResults[0] = results
+        allResults[idx] = results
+
 
     return allResults
 
@@ -88,6 +86,8 @@ def getTextDistances(query_text, ddbb_text):
         if len(tuple) > 0:
             distance = textdistance.hamming.normalized_similarity(query_text, tuple[0][0])
             distance1 = textdistance.hamming.normalized_similarity(query_text, tuple[0][1])
+            # print(f'Distance for ddbb paintor -{tuple[0][0]}- with query -{query_text}- is {distance}')
+            # print(f'Distance for ddbb picture -{tuple[0][1]}- with query -{query_text}- is {distance1}')
             distance = max(distance, distance1)
         # distance = chi2_distance(hist, queryImageHistogram)
         results[k] = distance
