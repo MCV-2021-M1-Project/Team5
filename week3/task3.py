@@ -226,7 +226,7 @@ def main():
                     for score, name in allResultsTexture[key]:
                         all_result_df.loc[all_result_df["Image"] == name, "Texture"] = score
 
-                    if args.extract_text_box:
+                    if args.extract_text_box and allResultsText:
                         for score, name in allResultsText[key][0:args.k_best]:
                             bestAuxText.append(int(Path(name).stem.split('_')[1]))
                         bestPicturesText.append(bestAuxText)
@@ -237,6 +237,10 @@ def main():
 
                     all_result_df["Color"] = all_result_df["Color"].map(oneTake)
                     all_result_df["Texture"] = all_result_df["Texture"].map(oneTake)
+
+                    all_result_df["Color"]=(all_result_df["Color"]-all_result_df["Color"].min())/(all_result_df["Color"].max()-all_result_df["Color"].min())
+                    all_result_df["Texture"]=(all_result_df["Texture"]-all_result_df["Texture"].min())/(all_result_df["Texture"].max()-all_result_df["Texture"].min())
+                    all_result_df["Text"]=(all_result_df["Text"]-all_result_df["Text"].min())/(all_result_df["Text"].max()-all_result_df["Text"].min())
 
                     weights = args.weights
                     all_result_df["Combined"] = 0
