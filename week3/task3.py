@@ -238,6 +238,10 @@ def main():
                     all_result_df["Color"] = all_result_df["Color"].map(oneTake)
                     all_result_df["Texture"] = all_result_df["Texture"].map(oneTake)
 
+                    all_result_df["Color"]=(all_result_df["Color"]-all_result_df["Color"].min())/(all_result_df["Color"].max()-all_result_df["Color"].min())
+                    all_result_df["Texture"]=(all_result_df["Texture"]-all_result_df["Texture"].min())/(all_result_df["Texture"].max()-all_result_df["Texture"].min())
+                    all_result_df["Text"]=(all_result_df["Text"]-all_result_df["Text"].min())/(all_result_df["Text"].max()-all_result_df["Text"].min())
+
                     weights = args.weights
                     all_result_df["Combined"] = 0
                     all_result_df["Combined"] = weights[0] * all_result_df["Color"] + weights[1] * all_result_df["Texture"] + weights[2] * all_result_df["Text"]
