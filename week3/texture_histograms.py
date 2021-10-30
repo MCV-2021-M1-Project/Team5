@@ -8,26 +8,24 @@ from average_metrics import getDistances
 from background_processor import backgroundRemoval, intersect_matrices, findElementsInMask
 from extractTextBox import getTextBoundingBoxAlone
 
+#LBP settings
+radius = 8
+n_points = 24
+method = "nri_uniform"
+
 def getSingleTextureHistogram(image, channels, mask, bins, colorRange, sections = 1, maskPos = []):
-    #LBP settings
-    radius = 3 #round(image.shape[0]/100)
-    n_points = 8 #*radius
-    method = "uniform"
-    
     #Histogram settings
-    bins = [n_points + 2]
-    colorRange = [0, n_points + 2]
+    bins = [150]
+    colorRange = [0, 2+(n_points-1)*n_points] #Excluding non-uniform values (Non-inclusive end)
     
     lbp = local_binary_pattern(image, n_points, radius, method)
-    lbp = np.uint8(lbp)
-
-    plt.imshow(lbp, cmap = 'gray')
+    lbp = np.uint16(lbp)
     
     if sections <= 1:
-            # Compute the histogram
-            hist = cv2.calcHist([lbp], channels, mask, bins, colorRange)
-            hist = cv2.normalize(hist, hist).flatten()
-            return hist
+        # Compute the histogram
+        hist = cv2.calcHist([lbp], channels, mask, bins, colorRange)
+        hist = cv2.normalize(hist, hist).flatten()
+        return hist
     else:
         sectionsMask = np.zeros((image.shape[0], image.shape[1]), dtype="uint8")
         sH = image.shape[0] // sections
@@ -46,6 +44,7 @@ def getSingleTextureHistogram(image, channels, mask, bins, colorRange, sections 
                 if mask is not None:
                     sectionsMask = intersect_matrices(sectionsMask, mask)
                 auxhist = cv2.calcHist([lbp], channels, sectionsMask, bins, colorRange)
+                # plotHistogram(cv2.normalize(auxhist, auxhist).flatten())
                 auxHists.extend(cv2.normalize(auxhist, auxhist).flatten())
                 sectionsMask[:,:] = 0
         return auxHists
@@ -128,3 +127,13 @@ def compareTextureHistograms(queryHist, ddbb_histograms):
         
     return allResults
 
+def plotHistogram(hist):
+    # plot the histogram
+    plt.figure()
+    plt.title("Histogram")
+    plt.xlabel("Bins")
+    plt.ylabel("% of Pixels")
+    plt.plot(hist)
+    plt.xlim([150])
+
+    plt.show()
