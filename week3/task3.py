@@ -226,7 +226,7 @@ def main():
                     for score, name in allResultsTexture[key]:
                         all_result_df.loc[all_result_df["Image"] == name, "Texture"] = score
 
-                    if args.extract_text_box:
+                    if args.extract_text_box and bool(allResultsText):
                         for score, name in allResultsText[key][0:args.k_best]:
                             bestAuxText.append(int(Path(name).stem.split('_')[1]))
                         bestPicturesText.append(bestAuxText)
