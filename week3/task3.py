@@ -33,7 +33,7 @@ def parse_args():
     parser.add_argument('-t', '--extract_text_box', type=bool, default=False, help='Set True to extract the text bounding box')
     parser.add_argument('-plt', '--plot_result', type=bool, default=False, help='Set to True to plot results')
     parser.add_argument('-d', '--denoise', type=bool, default=False, help='Denoise query image before processing it')
-    parser.add_argument('-w', '--weights', type=list, default=[0.8, 0.1, 0.1], help='weights for combining descriptors')
+    parser.add_argument('-w', '--weights', type=list, default=[0.6, 0.1, 0.3], help='weights for combining descriptors')
     return parser.parse_args()
 
 def oneTake(x):
@@ -101,7 +101,7 @@ def main():
             filename = args.query_image
 
             #Compare COLOR histograms
-            queryColorHist, _,_,_ = getColorHistogramForQueryImage(queryImage, args.color_space, args.mask, filename, args.split, args.extract_text_box)
+            queryColorHist, _,_,_ = getColorHistogramForQueryImage(queryImageDenoised, args.color_space, args.mask, filename, args.split, args.extract_text_box)
             allResultsColor = compareColorHistograms(queryColorHist, ddbb_color_histograms)
             
             #Plot K best coincidences <------------
@@ -112,7 +112,7 @@ def main():
                 plotResults(allResultsColor, args.k_best, ddbb_images, queryImageRGB)
             
             #Compare TEXTURE histograms
-            queryTextureHist, _,_,_ = getTextureHistogramForQueryImage(queryImage, args.color_space, args.mask, filename, args.split, args.extract_text_box)
+            queryTextureHist, _,_,_ = getTextureHistogramForQueryImage(queryImageDenoised, args.color_space, args.mask, filename, args.split, args.extract_text_box)
             allResultsTexture = compareTextureHistograms(queryTextureHist, ddbb_texture_histograms)
             
         elif args.query_image_folder:
@@ -130,6 +130,7 @@ def main():
             resultPickleColor = []
             resultPickleTexture = []
             resultPickleText = []
+            resultPickleCombined = []
             precisionList = []
             recallList = []
             F1List = []
@@ -197,6 +198,7 @@ def main():
 
                 #Add the best k pictures to the array that is going to be exported as pickle
                 bestPicturesColor, bestAuxColor = [], []
+                bestPicturesCombined, bestAuxCombined = [], []
                 bestPicturesTexture, bestAuxTexture = [], []
                 bestPicturesText, bestAuxText = [], []
 
@@ -224,10 +226,11 @@ def main():
                     for score, name in allResultsTexture[key]:
                         all_result_df.loc[all_result_df["Image"] == name, "Texture"] = score
 
-                    if args.extract_text_box and bool(allResultsText):
+                    if args.extract_text_box:
                         for score, name in allResultsText[key][0:args.k_best]:
                             bestAuxText.append(int(Path(name).stem.split('_')[1]))
                         bestPicturesText.append(bestAuxText)
+                        # print('Scores for text:',allResultsText[key][0:args.k_best])
 
                         for score, name in allResultsText[key]:
                             all_result_df.loc[all_result_df["Image"] == name, "Text"] = score
@@ -237,11 +240,22 @@ def main():
 
                     weights = args.weights
                     all_result_df["Combined"] = 0
-                    all_result_df["Combined"] = weights[0] * all_result_df["Color"] + weights[1] * all_result_df["Texture"] + weights[0] * all_result_df["Text"]
+                    all_result_df["Combined"] = weights[0] * all_result_df["Color"] + weights[1] * all_result_df["Texture"] + weights[2] * all_result_df["Text"]
 
-                    print(all_result_df)
+                    # print(all_result_df)
+                    # print(all_result_df["Combined"].tolist())
+                    # print('Score for image 77: ',all_result_df['Image'])
+                    combinedResults = list(zip(all_result_df["Combined"].tolist(), all_result_df["Image"].tolist()))
+                    # print(combinedResults)
+                    combinedResults.sort(reverse=True)
+                    for scre, name in combinedResults[0:args.k_best]:
+                        bestAuxCombined.append(int(Path(name).stem.split('_')[1]))
+                    # print('Scores for combined: ',combinedResults[0:args.k_best])
+                    bestPicturesCombined.append(bestAuxCombined)
 
                 #pickel the k best results in lists of list
+                
+                resultPickleCombined.append(bestPicturesCombined)
                 resultPickleColor.append(bestPicturesColor)
                 resultPickleTexture.append(bestPicturesTexture)
                 if args.extract_text_box:
@@ -288,6 +302,10 @@ def main():
                     flattened = [np.array(sublist).flatten() for sublist in resultPickleText]
                     resultScore = mapk(gtRes, flattened, args.k_best)
                     print(f'Text average precision in Hellinger for k = {args.k_best} is {resultScore}.')
+                #Combined
+                flattened = [np.array(sublist).flatten() for sublist in resultPickleCombined]
+                resultScore = mapk(gtRes, flattened, args.k_best)
+                print(f'Combined average precision in Hellinger for k = {args.k_best} is {resultScore}.')
             with open('Hellinger_' + args.color_space + '_segments' + str(args.split) + '.pkl', 'wb') as handle:
                 pickle.dump(resultPickleColor, handle, protocol=pickle.HIGHEST_PROTOCOL)
         #--------------------------------------

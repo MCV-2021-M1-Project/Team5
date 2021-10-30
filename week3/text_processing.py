@@ -21,12 +21,13 @@ def getImagesGtText(path):
     filenames.sort()
     ddbb_texts = {}
     for ind, filename in enumerate(filenames):
+        keyName = filename.replace('.txt', '.jpg').replace('\\','/')
         file1 = open(filename, 'r', encoding="latin-1")
         Lines = file1.readlines()
-        ddbb_texts[filename.replace('.txt', '.jpg')] = []
+        ddbb_texts[keyName] = []
         if len(Lines) >= 1 and Lines[0][0] != '\n':
             for i, line in enumerate(Lines):
-                ddbb_texts[filename.replace('.txt', '.jpg')].append(readTextFromFile(line))
+                ddbb_texts[keyName].append(readTextFromFile(line))
 
     return ddbb_texts
 
