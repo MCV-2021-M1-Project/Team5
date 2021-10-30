@@ -74,7 +74,6 @@ def compareText(query_text, ddbb_text):
         # sort the results
         allResults[idx] = results
 
-
     return allResults
 
 def getTextDistances(query_text, ddbb_text):
@@ -87,6 +86,10 @@ def getTextDistances(query_text, ddbb_text):
         if len(tuple) > 0:
             distance = textdistance.hamming.normalized_similarity(query_text, tuple[0][0])
             distance1 = textdistance.hamming.normalized_similarity(query_text, tuple[0][1])
+            # distance = textdistance.levenshtein.normalized_similarity(query_text, tuple[0][0])
+            # distance1 = textdistance.levenshtein.normalized_similarity(query_text, tuple[0][1])
+            # distance = textdistance.damerau_levenshtein.normalized_similarity(query_text, tuple[0][0])
+            # distance1 = textdistance.damerau_levenshtein.normalized_similarity(query_text, tuple[0][1])
             # print(f'Distance for ddbb paintor -{tuple[0][0]}- with query -{query_text}- is {distance}')
             # print(f'Distance for ddbb picture -{tuple[0][1]}- with query -{query_text}- is {distance1}')
             distance = max(distance, distance1)
