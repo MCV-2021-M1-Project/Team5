@@ -86,7 +86,7 @@ def getTextureHistograms(folderPath, sections = 1):
         
         channels, mask, bins, colorRange = C.OPENCV_COLOR_SPACES["Gray"][1:]
 
-        hist = getTextureHistogram(aux, channels, mask, bins, colorRange, sections)
+        hist = getSingleTextureHistogram(aux, channels, mask, bins, colorRange, sections, [])
 
         ddbb_texture_histograms[filename] = hist
         

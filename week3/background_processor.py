@@ -25,7 +25,7 @@ def evaluateMask(gtMask, computedMask):
     falsePositive = np.count_nonzero(intersect_matrices(cv2.bitwise_not(gtMask), computedMask))
     # trueNegative = np.count_nonzero(intersect_matrices(cv2.bitwise_not(gtMask), cv2.bitwise_not(computedMask)))
 
-    if truePositive + falsePositive is not 0:
+    if truePositive + falsePositive != 0:
         precision = truePositive / (truePositive + falsePositive)
     else:
         precision = 0
