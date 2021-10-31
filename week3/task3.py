@@ -333,9 +333,10 @@ def main():
                 pickle.dump(resultPickleColor, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
             # Export text box coordinates
-            print(TextBoxPickle)
-            with open('text_boxes' + '.pkl', 'wb') as handle:
-                pickle.dump(TextBoxPickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            if args.extract_text_box:
+                print(TextBoxPickle)
+                with open('text_boxes' + '.pkl', 'wb') as handle:
+                    pickle.dump(TextBoxPickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
         #--------------------------------------
 
 if __name__ == "__main__":
