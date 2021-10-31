@@ -61,10 +61,7 @@ def compareText(query_text, ddbb_text):
     Compare the text of ddbb_texts with the one for queryImage and returns
     a dictionary of different methods
 
-    :param queryHist: histogram of queryImage to search
-    :param ddbb_histograms: dictionary with the histograms of the images where queryImage is going to be searched
-
-    :return: Dictionary with all the distances for queryImage ordered
+    :return: Dictionary with all the distances for queryText ordered
     """
 
     allResults = {}
@@ -73,6 +70,8 @@ def compareText(query_text, ddbb_text):
         results = getTextDistances(text, ddbb_text)
         # sort the results
         allResults[idx] = results
+
+    # print(allResults)
 
     return allResults
 

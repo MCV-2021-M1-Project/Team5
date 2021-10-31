@@ -33,7 +33,7 @@ def parse_args():
     parser.add_argument('-t', '--extract_text_box', type=bool, default=False, help='Set True to extract the text bounding box')
     parser.add_argument('-plt', '--plot_result', type=bool, default=False, help='Set to True to plot results')
     parser.add_argument('-d', '--denoise', type=bool, default=False, help='Denoise query image before processing it')
-    parser.add_argument('-w', '--weights', type=list, default=[0.6, 0.3, 0.6], help='weights for combining descriptors')
+    parser.add_argument('-w', '--weights', type=list, default=[0.6, 0.2, 0.2], help='weights for combining descriptors')
     return parser.parse_args()
 
 def oneTake(x):
@@ -131,6 +131,7 @@ def main():
             resultPickleTexture = []
             resultPickleText = []
             resultPickleCombined = []
+            TextBoxPickle = []
             precisionList = []
             recallList = []
             F1List = []
@@ -155,7 +156,8 @@ def main():
 
                 if backgroundMask is None:
                     if args.extract_text_box:
-                        textImage, textBoxMask = getTextAlone(queryImage)
+                        textImage, textBoxMask, box = getTextAlone(queryImage)
+                        TextBoxPickle.append([box])
                         textBoxMasks.append(textBoxMask)
                         textImages.append(textImage)
                         backgroundMask = cv2.bitwise_not(textBoxMask)
@@ -163,22 +165,34 @@ def main():
                 else:
                     elems, start, end = findElementsInMask(backgroundMask)
                     if elems > 1:
+                        boxes = []
                         for num in range(elems):
                             auxMask = np.zeros(backgroundMask.shape, dtype="uint8")
                             auxMask[start[num][0]:end[num][0],start[num][1]:end[num][1]] = 255
+                            # cv2.imshow("Background Mask", auxMask)
+                            # cv2.waitKey(0)
                             if args.extract_text_box:
                                 res = cv2.bitwise_and(queryImage,queryImage,mask = auxMask)
-                                textImage, textBoxMask = getTextAlone(queryImage)
+                                textImage, textBoxMask, box = getTextAlone(res)
+                                # cv2.imshow("TextImage", textImage)
+                                # cv2.imshow("textBoxMask", textBoxMask)
+                                boxes.append(box)
                                 textBoxMasks.append(textBoxMask)
                                 textImages.append(textImage)
                                 auxMask = cv2.bitwise_and(auxMask,auxMask,mask = cv2.bitwise_not(textBoxMask))
+                                # cv2.imshow("Background Mask without text", auxMask)
+                                # cv2.waitKey(0)
                             masks.append(auxMask)
+                        TextBoxPickle.append(boxes)
                     else:
                         if args.extract_text_box:
                             res = cv2.bitwise_and(queryImage,queryImage,mask = backgroundMask)
-                            textMask = getTextBoundingBoxAlone(res)
+                            textMask, box = getTextBoundingBoxAlone(res)
+                            TextBoxPickle.append([box])
                             auxMask = cv2.bitwise_and(backgroundMask,backgroundMask,mask = cv2.bitwise_not(textMask))
                             masks.append(auxMask)
+                            # cv2.imshow("Background Mask without text", auxMask)
+                            # cv2.waitKey(0)
 
                 #-------------------------------------------
 
@@ -194,7 +208,11 @@ def main():
                 if args.extract_text_box:
                     queryTexts = []
                     for textImg in textImages:
-                        queryTexts.append(imageToText(textImg))
+                        text = imageToText(textImg)
+                        queryTexts.append(text)
+                        # cv2.imshow("TextImage", textImg)
+                        # cv2.waitKey(0)
+                        # print("Extracted:    " + text)
                     allResultsText = compareText(queryTexts, ddbb_text)
 
                 #Add the best k pictures to the array that is going to be exported as pickle
@@ -223,7 +241,6 @@ def main():
                     # Add the best k pictures to the array that is going to be exported as pickle
                     for score, name in allResultsTexture[key][0:args.k_best]:
                         bestAuxTexture.append(int(Path(name).stem.split('_')[1]))
-
 
                     for score, name in allResultsTexture[key]:
                         all_result_df.loc[all_result_df["Image"] == name, "Texture"] = score
@@ -262,13 +279,11 @@ def main():
                     bestPicturesCombined.append(bestAuxCombined)
 
                 #pickel the k best results in lists of list
-                
-                resultPickleCombined.append(bestPicturesCombined)
                 resultPickleColor.append(bestPicturesColor)
                 resultPickleTexture.append(bestPicturesTexture)
                 if args.extract_text_box:
                     resultPickleText.append(bestPicturesText)
-
+                resultPickleCombined.append(bestPicturesCombined)
                 #--------------------------
 
                 #Expanding mask evaluation lists , recall, F1_measure
@@ -316,6 +331,11 @@ def main():
                 print(f'Combined average precision in Hellinger for k = {args.k_best} is {resultScore}.')
             with open('Hellinger_' + args.color_space + '_segments' + str(args.split) + '.pkl', 'wb') as handle:
                 pickle.dump(resultPickleColor, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+            # Export text box coordinates
+            print(TextBoxPickle)
+            with open('text_boxes' + '.pkl', 'wb') as handle:
+                pickle.dump(TextBoxPickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
         #--------------------------------------
 
 if __name__ == "__main__":
