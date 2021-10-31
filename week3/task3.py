@@ -33,7 +33,7 @@ def parse_args():
     parser.add_argument('-t', '--extract_text_box', type=bool, default=False, help='Set True to extract the text bounding box')
     parser.add_argument('-plt', '--plot_result', type=bool, default=False, help='Set to True to plot results')
     parser.add_argument('-d', '--denoise', type=bool, default=False, help='Denoise query image before processing it')
-    parser.add_argument('-w', '--weights', type=list, default=[0.6, 0.1, 0.3], help='weights for combining descriptors')
+    parser.add_argument('-w', '--weights', type=list, default=[0.6, 0.3, 0.6], help='weights for combining descriptors')
     return parser.parse_args()
 
 def oneTake(x):
@@ -152,6 +152,7 @@ def main():
                 textBoxMasks = []
                 textImages = []
                 start, end = [], []
+
                 if backgroundMask is None:
                     if args.extract_text_box:
                         textImage, textBoxMask = getTextAlone(queryImage)
@@ -198,10 +199,11 @@ def main():
 
                 #Add the best k pictures to the array that is going to be exported as pickle
                 bestPicturesColor, bestAuxColor = [], []
-                bestPicturesCombined, bestAuxCombined = [], []
                 bestPicturesTexture, bestAuxTexture = [], []
                 bestPicturesText, bestAuxText = [], []
+                bestPicturesCombined, bestAuxCombined = [], []
 
+                #Inistilise data frame
                 all_result_df = pd.DataFrame(columns=["Image", "Color", "Texture", "Text"])
 
                 for key, results in allResultsColor.items():
@@ -235,12 +237,14 @@ def main():
                         for score, name in allResultsText[key]:
                             all_result_df.loc[all_result_df["Image"] == name, "Text"] = score
 
+                    # Revert the score
                     all_result_df["Color"] = all_result_df["Color"].map(oneTake)
                     all_result_df["Texture"] = all_result_df["Texture"].map(oneTake)
 
+                    # Normalise the final score with min-max normalization
                     all_result_df["Color"]=(all_result_df["Color"]-all_result_df["Color"].min())/(all_result_df["Color"].max()-all_result_df["Color"].min())
                     all_result_df["Texture"]=(all_result_df["Texture"]-all_result_df["Texture"].min())/(all_result_df["Texture"].max()-all_result_df["Texture"].min())
-                    all_result_df["Text"]=(all_result_df["Text"]-all_result_df["Text"].min())/(all_result_df["Text"].max()-all_result_df["Text"].min())
+                    # all_result_df["Text"]=(all_result_df["Text"]-all_result_df["Text"].min())/(all_result_df["Text"].max()-all_result_df["Text"].min())
 
                     weights = args.weights
                     all_result_df["Combined"] = 0
