@@ -3,6 +3,7 @@ import cv2
 from matplotlib import pyplot as plt
 import numpy as np
 from skimage.feature import local_binary_pattern
+from scipy.fftpack import dct, idct
 import constants as C
 from average_metrics import getDistances
 from background_processor import backgroundRemoval, intersect_matrices, findElementsInMask
@@ -20,6 +21,11 @@ def getSingleTextureHistogram(image, channels, mask, bins, colorRange, sections 
     
     lbp = local_binary_pattern(image, n_points, radius, method)
     lbp = np.uint16(lbp)
+    
+    # dct = dct2(image)
+    # print(image.shape)
+    # print(dct.shape)
+    # print(dct)
     
     if sections <= 1:
         # Compute the histogram
@@ -126,6 +132,9 @@ def compareTextureHistograms(queryHist, ddbb_histograms):
         allResults[0] = sorted([(v, k) for (k, v) in results.items()], reverse=False)
         
     return allResults
+
+def dct2(image):
+    return dct(dct(image.T, norm='ortho').T, norm='ortho')
 
 def plotHistogram(hist):
     # plot the histogram

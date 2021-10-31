@@ -103,7 +103,6 @@ def getDistances(comparisonMethod, baseImageHistograms, queryImageHistogram):
             histBase = cv2.UMat(np.array(hist, dtype=np.float32))
             distance = cv2.compareHist(query, histBase, comparisonMethod)
         else:
-            #print(len(queryImageHistogram), len(hist))
             distance = cv2.compareHist(queryImageHistogram, hist, comparisonMethod)
         # distance = chi2_distance(hist, queryImageHistogram)
         results[k] = distance

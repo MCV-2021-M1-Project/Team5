@@ -158,6 +158,10 @@ def main():
                         textBoxMasks.append(textBoxMask)
                         textImages.append(textImage)
                         backgroundMask = cv2.bitwise_not(textBoxMask)
+                        plt.imshow(cv2.cvtColor(backgroundMask, cv2.COLOR_BGR2RGB))
+                        plt.axis("off")
+                        plt.title('Mask basic')
+                        plt.show()
                         masks.append(backgroundMask)
                 else:
                     elems, start, end = findElementsInMask(backgroundMask)
@@ -171,13 +175,27 @@ def main():
                                 textBoxMasks.append(textBoxMask)
                                 textImages.append(textImage)
                                 auxMask = cv2.bitwise_and(auxMask,auxMask,mask = cv2.bitwise_not(textBoxMask))
+                            plt.imshow(cv2.cvtColor(auxMask, cv2.COLOR_BGR2RGB))
+                            plt.axis("off")
+                            plt.title('Mask basic')
+                            plt.show()
                             masks.append(auxMask)
                     else:
                         if args.extract_text_box:
                             res = cv2.bitwise_and(queryImage,queryImage,mask = backgroundMask)
                             textMask = getTextBoundingBoxAlone(res)
                             auxMask = cv2.bitwise_and(backgroundMask,backgroundMask,mask = cv2.bitwise_not(textMask))
+                            plt.imshow(cv2.cvtColor(auxMask, cv2.COLOR_BGR2RGB))
+                            plt.axis("off")
+                            plt.title('Mask basic')
+                            plt.show()
                             masks.append(auxMask)
+                        else:
+                            plt.imshow(cv2.cvtColor(backgroundMask, cv2.COLOR_BGR2RGB))
+                            plt.axis("off")
+                            plt.title('Mask basic')
+                            plt.show()
+                            masks.append(backgroundMask)
 
                 #-------------------------------------------
 
