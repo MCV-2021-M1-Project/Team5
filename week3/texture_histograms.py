@@ -1,13 +1,19 @@
 import os
 import cv2
+from statistics import mean
 from matplotlib import pyplot as plt
 import numpy as np
+from numpy import pi
+from numpy import r_
 from skimage.feature import local_binary_pattern
-from scipy.fftpack import dct, idct
+from scipy.fftpack import dct
 import constants as C
 from average_metrics import getDistances
 from background_processor import backgroundRemoval, intersect_matrices, findElementsInMask
 from extractTextBox import getTextBoundingBoxAlone
+
+#Select texture method to be applied
+textureMethod = "DCT"
 
 #LBP settings
 radius = 8
@@ -15,23 +21,56 @@ n_points = 24
 method = "nri_uniform"
 
 def getSingleTextureHistogram(image, channels, mask, bins, colorRange, sections = 1, maskPos = []):
-    #Histogram settings
-    bins = [150]
-    colorRange = [0, 2+(n_points-1)*n_points] #Excluding non-uniform values (Non-inclusive end)
-    
-    lbp = local_binary_pattern(image, n_points, radius, method)
-    lbp = np.uint16(lbp)
-    
-    # dct = dct2(image)
-    # print(image.shape)
-    # print(dct.shape)
-    # print(dct)
-    
+    if textureMethod == "LBP":
+        #Histogram settings
+        bins = [150]
+        colorRange = [0, 2+(n_points-1)*n_points] #Excluding non-uniform values (Non-inclusive end)
+        
+        lbp = local_binary_pattern(image, n_points, radius, method)
+        lbp = np.uint16(lbp)
+        textureInfo = lbp
+        
+    elif textureMethod == "DCT":
+        imageConverted = np.float32(image)/255.0
+        
+        # imsize = image.shape
+        # dctB = np.zeros(imsize)
+        
+        # Do 8x8 DCT on image (in-place)
+        # for i in r_[:imsize[0]:8]:
+        #     for j in r_[:imsize[1]:8]:
+        #         dctB[i:(i+8),j:(j+8)] = dct2(imageConverted[i:(i+8),j:(j+8)])
+        
+        # plt.figure()
+        # plt.imshow(dctB,cmap='gray',vmax = np.max(dctB)*0.01,vmin = 0)
+        
+        # # Display the dct of an 8x8 block
+        # pos = 0
+        # plt.figure()
+        # plt.imshow(dctB[pos:pos+8,pos:pos+8],cmap='gray',vmax= np.max(dctB)*0.01,vmin = 0, extent=[0,pi,pi,0])
+        # plt.title( "An 8x8 DCT block")
+        
+        # textureInfo = dctB
+        # print(dctB)
+        # print(dctB2)
+        
     if sections <= 1:
-        # Compute the histogram
-        hist = cv2.calcHist([lbp], channels, mask, bins, colorRange)
-        hist = cv2.normalize(hist, hist).flatten()
-        return hist
+        if textureMethod == "LBP":
+            # Compute the histogram
+            hist = cv2.calcHist([textureInfo], channels, mask, bins, colorRange)
+            hist = cv2.normalize(hist, hist).flatten()
+        elif textureMethod == "DCT":
+            dctImg = cv2.dct(imageConverted)
+            hist = dctCoefficients(dctImg[:6,:6])[:6]
+            # maskedTextureInfo = cv2.bitwise_and(textureInfo, textureInfo, mask)
+            # coef1 = (extractDctCoefficients(maskedTextureInfo, 0, 0))
+            # coef2 = (extractDctCoefficients(maskedTextureInfo, 0, 1)) + 1024
+            # coef3 = (extractDctCoefficients(maskedTextureInfo, 1, 0)) + 1024
+            # coef4 = (extractDctCoefficients(maskedTextureInfo, 2, 0)) + 1024
+            # coef5 = (extractDctCoefficients(maskedTextureInfo, 1, 1)) + 1024
+            # coef6 = (extractDctCoefficients(maskedTextureInfo, 0, 2)) + 1024
+            # hist = np.array([coef1, coef2, coef3, coef4, coef5, coef6])
+        return (hist+ 1024)
     else:
         sectionsMask = np.zeros((image.shape[0], image.shape[1]), dtype="uint8")
         sH = image.shape[0] // sections
@@ -49,9 +88,26 @@ def getSingleTextureHistogram(image, channels, mask, bins, colorRange, sections 
                 sectionsMask[(hStart+sH*row):(sH*row + hStart + sH),(wStart+sW*column):(sW*column + wStart + sW)] = 255
                 if mask is not None:
                     sectionsMask = intersect_matrices(sectionsMask, mask)
-                auxhist = cv2.calcHist([lbp], channels, sectionsMask, bins, colorRange)
-                # plotHistogram(cv2.normalize(auxhist, auxhist).flatten())
-                auxHists.extend(cv2.normalize(auxhist, auxhist).flatten())
+                if textureMethod == "LBP":
+                    auxhist = cv2.calcHist([lbp], channels, sectionsMask, bins, colorRange)
+                    auxHists.extend(cv2.normalize(auxhist, auxhist).flatten())
+                elif textureMethod == "DCT":
+                    imgSect = imageConverted[(hStart+sH*row):(sH*row + hStart + sH),(wStart+sW*column):(sW*column + wStart + sW)]
+                    dctImg = cv2.dct(imgSect)
+                    hist = dctCoefficients(dctImg[:6,:6])[:6]
+                    # maskedTextureInfo = cv2.bitwise_and(textureInfo, textureInfo, sectionsMask)
+                    # coef1 = round((extractDctCoefficients(maskedTextureInfo, 0, 0)) + 1024, 2)
+                    # coef2 = round((extractDctCoefficients(maskedTextureInfo, 0, 1)) + 1024, 2)
+                    # coef3 = round((extractDctCoefficients(maskedTextureInfo, 1, 0)) + 1024, 2)
+                    # coef4 = round((extractDctCoefficients(maskedTextureInfo, 2, 0)) + 1024, 2)
+                    # coef5 = round((extractDctCoefficients(maskedTextureInfo, 1, 1)) + 1024, 2)
+                    # coef6 = round((extractDctCoefficients(maskedTextureInfo, 0, 2)) + 1024, 2)
+                    # coef7 = round((extractDctCoefficients(maskedTextureInfo, 0, 3)) + 1024, 2)
+                    # coef8 = round((extractDctCoefficients(maskedTextureInfo, 1, 2)) + 1024, 2)
+                    # coef9 = round((extractDctCoefficients(maskedTextureInfo, 2, 1)) + 1024, 2)
+                    # coef10 = round((extractDctCoefficients(maskedTextureInfo, 3, 0)) + 1024, 2)
+                    # hist = np.array([coef1, coef2, coef3, coef4, coef5, coef6])
+                    auxHists.extend(hist+1024)
                 sectionsMask[:,:] = 0
         return auxHists
 
@@ -92,9 +148,11 @@ def getTextureHistograms(folderPath, sections = 1):
         channels, mask, bins, colorRange = C.OPENCV_COLOR_SPACES["Gray"][1:]
 
         hist = getSingleTextureHistogram(aux, channels, mask, bins, colorRange, sections, [])
-
+        
         ddbb_texture_histograms[filename] = hist
         
+        print('processing')
+
     return ddbb_texture_histograms
 
 def getTextureHistogramForQueryImage(queryImage, backgroundMasks, startMasks, endMasks, sections = 1):    
@@ -127,15 +185,35 @@ def compareTextureHistograms(queryHist, ddbb_histograms):
             # sort the results
             allResults[idx] = sorted([(v, k) for (k, v) in results.items()], reverse=False)
     else:
+        # print(ddbb_histograms)
         results = getDistances(cv2.HISTCMP_BHATTACHARYYA, ddbb_histograms, queryHist)
         # sort the results
         allResults[0] = sorted([(v, k) for (k, v) in results.items()], reverse=False)
-        
+    # print(allResults)
     return allResults
 
 def dct2(image):
-    return dct(dct(image.T, norm='ortho').T, norm='ortho')
+    return dct(dct(image, axis=0, norm='ortho' ), axis=1, norm='ortho' )
 
+def extractDctCoefficients(dctImage, coefH, coefW):
+    coefList = []
+    i = coefH
+    j = coefW
+    while i < dctImage.shape[0]:
+        while j < dctImage.shape[1]:
+            if dctImage[i][j] != 0:
+                coefList.append(dctImage[i][j])
+            j += 8
+        j = coefW
+        i += 8
+    try:
+        return mean(coefList)
+    except:
+        return 0
+
+def dctCoefficients(dctImage):
+    return np.concatenate([np.diagonal(dctImage[::-1,:], i)[::(2*(i % 2)-1)] for i in range(1-dctImage.shape[0], dctImage.shape[0])])
+            
 def plotHistogram(hist):
     # plot the histogram
     plt.figure()
