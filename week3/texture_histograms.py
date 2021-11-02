@@ -127,8 +127,6 @@ def getTextureHistograms(folderPath, sections = 1):
         
         ddbb_texture_histograms[filename] = hist
         
-        print('processing')
-
     return ddbb_texture_histograms
 
 def getTextureHistogramForQueryImage(queryImage, backgroundMasks, startMasks, endMasks, sections = 1):    
