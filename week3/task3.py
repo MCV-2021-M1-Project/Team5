@@ -213,6 +213,9 @@ def main():
                             text.replace('\n','')
                         textsPickle.append(text)
                         queryTexts.append(text)
+                    with open((Path(filename).stem + '.txt'), 'w') as output:
+                        for row in queryTexts:
+                            output.write(str(row) + '\n')    
                     allResultsText = compareText(queryTexts, ddbb_text)
 
                 #Add the best k pictures to the array that is going to be exported as pickle

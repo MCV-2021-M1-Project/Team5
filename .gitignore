@@ -379,3 +379,5 @@ results/*
 test.py
 *.xml
 *.iml
+
+*.txt

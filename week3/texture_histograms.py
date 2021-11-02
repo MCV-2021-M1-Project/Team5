@@ -78,9 +78,9 @@ def getSingleTextureHistogram(image, channels, mask, bins, colorRange, sections 
                     # plt.axis("off")
                     # plt.show()
                     
-                    plt.imshow(dctImg[:20,:20], cmap=cm.jet, interpolation = 'nearest')
-                    plt.colorbar(shrink=0.5)
-                    plt.show()
+                    # plt.imshow(dctImg[:20,:20], cmap=cm.jet, interpolation = 'nearest')
+                    # plt.colorbar(shrink=0.5)
+                    # plt.show()
                     
                     hist = dctCoefficients(dctImg[:5,:5])[:numCoef]
                     # plotHistogram(hist)
