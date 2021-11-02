@@ -346,7 +346,7 @@ def main():
                 resultScore = mapk(gtRes, flattened, args.k_best)
                 print(f'Combined average precision for k = {args.k_best} is {resultScore}.')
             with open('Hellinger_' + args.color_space + '_segments' + str(args.split) + '.pkl', 'wb') as handle:
-                pickle.dump(resultPickleColor, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                pickle.dump(resultPickleCombined, handle, protocol=pickle.HIGHEST_PROTOCOL)
         #--------------------------------------
 
 if __name__ == "__main__":
