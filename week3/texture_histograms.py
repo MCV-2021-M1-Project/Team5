@@ -78,11 +78,12 @@ def getSingleTextureHistogram(image, channels, mask, bins, colorRange, sections 
                     # plt.axis("off")
                     # plt.show()
                     
-                    # plt.imshow(dctImg[:5,:5], cmap=cm.jet, interpolation = 'nearest')
-                    # plt.colorbar(shrink=0.5)
-                    # plt.show()
+                    plt.imshow(dctImg[:20,:20], cmap=cm.jet, interpolation = 'nearest')
+                    plt.colorbar(shrink=0.5)
+                    plt.show()
                     
                     hist = dctCoefficients(dctImg[:5,:5])[:numCoef]
+                    # plotHistogram(hist)
                     auxHists.extend(abs(hist))
                 sectionsMask[:,:] = 0
         return auxHists
@@ -192,9 +193,8 @@ def dctCoefficients(dctImage):
 def plotHistogram(hist):
     # plot the histogram
     plt.figure()
-    plt.title("Histogram")
-    plt.xlabel("Bins")
-    plt.ylabel("% of Pixels")
+    plt.xlabel("Coefficients")
+    plt.ylabel("Values")
     plt.plot(hist)
     plt.xlim([150])
 
