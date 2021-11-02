@@ -181,7 +181,8 @@ def main():
                     else:
                         if args.extract_text_box:
                             res = cv2.bitwise_and(queryImage,queryImage,mask = backgroundMask)
-                            textMask = getTextBoundingBoxAlone(res)
+                            textImage, textMask = getTextAlone(res)
+                            textImages.append(textImage)
                             auxMask = cv2.bitwise_and(backgroundMask,backgroundMask,mask = cv2.bitwise_not(textMask))
                             # plt.imshow(cv2.cvtColor(auxMask, cv2.COLOR_BGR2RGB))
                             # plt.axis("off")
