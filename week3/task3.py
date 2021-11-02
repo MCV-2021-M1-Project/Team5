@@ -338,18 +338,15 @@ def main():
                     with open("results.txt", 'w') as output:
                         for row in textsPickle:
                             output.write(str(row) + '\n')
+                    print(TextBoxPickle)
+                    with open('text_boxes' + '.pkl', 'wb') as handle:
+                        pickle.dump(TextBoxPickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
                 #Combined
                 flattened = [np.array(sublist).flatten() for sublist in resultPickleCombined]
                 resultScore = mapk(gtRes, flattened, args.k_best)
                 print(f'Combined average precision for k = {args.k_best} is {resultScore}.')
             with open('Hellinger_' + args.color_space + '_segments' + str(args.split) + '.pkl', 'wb') as handle:
                 pickle.dump(resultPickleColor, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-            # Export text box coordinates
-            if args.extract_text_box:
-                print(TextBoxPickle)
-                with open('text_boxes' + '.pkl', 'wb') as handle:
-                    pickle.dump(TextBoxPickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
         #--------------------------------------
 
 if __name__ == "__main__":
