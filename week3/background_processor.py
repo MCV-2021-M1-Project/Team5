@@ -27,13 +27,17 @@ def evaluateMask(gtMask, computedMask):
 
     if truePositive + falsePositive != 0:
         precision = truePositive / (truePositive + falsePositive)
+        # print('Precision: ' + '{:.2f}'.format(precision))
+        recall = truePositive / (truePositive + falseNegative)
     else:
         precision = 0
-    #print('Precision: ' + '{:.2f}'.format(precision))
-    recall = truePositive / (truePositive + falseNegative)
-    #print('Recall: ' + '{:.2f}'.format(recall))
-    F1_measure = 2 * ((precision * recall) / (precision + recall))
-    #print('F1-measure: ' + '{:.2f}'.format(F1_measure))
+        recall = 0
+    if precision + recall != 0:
+        #print('Recall: ' + '{:.2f}'.format(recall))
+        F1_measure = 2 * ((precision * recall) / (precision + recall))
+        #print('F1-measure: ' + '{:.2f}'.format(F1_measure))
+    else:
+        F1_measure = 0
     return precision, recall, F1_measure
 
 def sorting_func(lst):

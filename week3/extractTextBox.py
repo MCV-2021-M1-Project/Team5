@@ -177,7 +177,7 @@ def maskToRect(image, mask):
 def getTextBoundingBoxAlone(image):
     mask = getTextBox(image)
     mask, x, y, w, h = maskToRect(image, mask)
-    return mask
+    return mask, convertBox(x, y, w, h)
 
 def getTextAlone(image):
     mask = getTextBox(image)
@@ -186,7 +186,8 @@ def getTextAlone(image):
         img_cropped = image[y:y + h, x:x + w]
     else:
         img_cropped = image
-    return img_cropped, mask
+    box = convertBox(x, y, w, h)
+    return img_cropped, mask, box
 
 def getTextBoundingBox(imageInput, folder = None, boxes_pkl = None):
     # construct the argument parser and parse the arguments

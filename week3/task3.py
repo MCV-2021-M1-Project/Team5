@@ -131,6 +131,7 @@ def main():
             resultPickleText = []
             resultPickleCombined = []
             textsPickle = []
+            TextBoxPickle = []
             precisionList = []
             recallList = []
             F1List = []
@@ -152,9 +153,11 @@ def main():
                 textBoxMasks = []
                 textImages = []
                 start, end = [], []
+
                 if backgroundMask is None:
                     if args.extract_text_box:
-                        textImage, textBoxMask = getTextAlone(queryImage)
+                        textImage, textBoxMask, box = getTextAlone(queryImage)
+                        TextBoxPickle.append([box])
                         textBoxMasks.append(textBoxMask)
                         textImages.append(textImage)
                         backgroundMask = cv2.bitwise_not(textBoxMask)
@@ -165,12 +168,18 @@ def main():
                 else:
                     elems, start, end = findElementsInMask(backgroundMask)
                     if elems > 1:
+                        boxes = []
                         for num in range(elems):
                             auxMask = np.zeros(backgroundMask.shape, dtype="uint8")
                             auxMask[start[num][0]:end[num][0],start[num][1]:end[num][1]] = 255
+                            # cv2.imshow("Background Mask", auxMask)
+                            # cv2.waitKey(0)
                             if args.extract_text_box:
                                 res = cv2.bitwise_and(queryImage,queryImage,mask = auxMask)
-                                textImage, textBoxMask = getTextAlone(queryImage)
+                                textImage, textBoxMask, box = getTextAlone(res)
+                                # cv2.imshow("TextImage", textImage)
+                                # cv2.imshow("textBoxMask", textBoxMask)
+                                boxes.append(box)
                                 textBoxMasks.append(textBoxMask)
                                 textImages.append(textImage)
                                 auxMask = cv2.bitwise_and(auxMask,auxMask,mask = cv2.bitwise_not(textBoxMask))
@@ -178,11 +187,13 @@ def main():
                             # plt.axis("off")
                             # plt.show()
                             masks.append(auxMask)
+                        TextBoxPickle.append(boxes)
                     else:
                         if args.extract_text_box:
                             res = cv2.bitwise_and(queryImage,queryImage,mask = backgroundMask)
-                            textImage, textMask = getTextAlone(res)
+                            textImage, textMask, box = getTextAlone(res)
                             textImages.append(textImage)
+                            TextBoxPickle.append([box])
                             auxMask = cv2.bitwise_and(backgroundMask,backgroundMask,mask = cv2.bitwise_not(textMask))
                             # plt.imshow(cv2.cvtColor(auxMask, cv2.COLOR_BGR2RGB))
                             # plt.axis("off")
@@ -220,10 +231,11 @@ def main():
 
                 #Add the best k pictures to the array that is going to be exported as pickle
                 bestPicturesColor, bestAuxColor = [], []
-                bestPicturesCombined, bestAuxCombined = [], []
                 bestPicturesTexture, bestAuxTexture = [], []
                 bestPicturesText, bestAuxText = [], []
+                bestPicturesCombined, bestAuxCombined = [], []
 
+                #Inistilise data frame
                 all_result_df = pd.DataFrame(columns=["Image", "Color", "Texture", "Text"])
 
                 for key, results in allResultsColor.items():
@@ -244,7 +256,6 @@ def main():
                         bestAuxTexture.append(int(Path(name).stem.split('_')[1]))
                     bestPicturesTexture.append(bestAuxTexture)
 
-
                     for score, name in allResultsTexture[key]:
                         all_result_df.loc[all_result_df["Image"] == name, "Texture"] = score
 
@@ -257,12 +268,14 @@ def main():
                         for score, name in allResultsText[key]:
                             all_result_df.loc[all_result_df["Image"] == name, "Text"] = score
 
+                    # Revert the score
                     all_result_df["Color"] = all_result_df["Color"].map(oneTake)
                     all_result_df["Texture"] = all_result_df["Texture"].map(oneTake)
 
+                    # Normalise the final score with min-max normalization
                     all_result_df["Color"]=(all_result_df["Color"]-all_result_df["Color"].min())/(all_result_df["Color"].max()-all_result_df["Color"].min())
                     all_result_df["Texture"]=(all_result_df["Texture"]-all_result_df["Texture"].min())/(all_result_df["Texture"].max()-all_result_df["Texture"].min())
-                    all_result_df["Text"]=(all_result_df["Text"]-all_result_df["Text"].min())/(all_result_df["Text"].max()-all_result_df["Text"].min())
+                    # all_result_df["Text"]=(all_result_df["Text"]-all_result_df["Text"].min())/(all_result_df["Text"].max()-all_result_df["Text"].min())
 
                     weights = args.weights
                     all_result_df["Combined"] = 0
@@ -276,13 +289,11 @@ def main():
                     bestPicturesCombined.append(bestAuxCombined)
 
                 #pickel the k best results in lists of list
-                
-                resultPickleCombined.append(bestPicturesCombined)
                 resultPickleColor.append(bestPicturesColor)
                 resultPickleTexture.append(bestPicturesTexture)
                 if args.extract_text_box:
                     resultPickleText.append(bestPicturesText)
-
+                resultPickleCombined.append(bestPicturesCombined)
                 #--------------------------
 
                 #Expanding mask evaluation lists , recall, F1_measure
@@ -333,6 +344,12 @@ def main():
                 print(f'Combined average precision for k = {args.k_best} is {resultScore}.')
             with open('Hellinger_' + args.color_space + '_segments' + str(args.split) + '.pkl', 'wb') as handle:
                 pickle.dump(resultPickleColor, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+            # Export text box coordinates
+            if args.extract_text_box:
+                print(TextBoxPickle)
+                with open('text_boxes' + '.pkl', 'wb') as handle:
+                    pickle.dump(TextBoxPickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
         #--------------------------------------
 
 if __name__ == "__main__":

@@ -381,3 +381,4 @@ test.py
 *.iml
 
 *.txt
+.DS_Store
