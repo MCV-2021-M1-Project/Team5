@@ -21,12 +21,13 @@ def getImagesGtText(path):
     filenames.sort()
     ddbb_texts = {}
     for ind, filename in enumerate(filenames):
-        file1 = open(filename, 'r')
+        keyName = filename.replace('.txt', '.jpg').replace('\\','/')
+        file1 = open(filename, 'r', encoding="latin-1")
         Lines = file1.readlines()
-        ddbb_texts[filename.replace('.txt', '.jpg')] = []
+        ddbb_texts[keyName] = []
         if len(Lines) >= 1 and Lines[0][0] != '\n':
             for i, line in enumerate(Lines):
-                ddbb_texts[filename.replace('.txt', '.jpg')].append(readTextFromFile(line))
+                ddbb_texts[keyName].append(readTextFromFile(line))
 
     return ddbb_texts
 
@@ -60,10 +61,7 @@ def compareText(query_text, ddbb_text):
     Compare the text of ddbb_texts with the one for queryImage and returns
     a dictionary of different methods
 
-    :param queryHist: histogram of queryImage to search
-    :param ddbb_histograms: dictionary with the histograms of the images where queryImage is going to be searched
-
-    :return: Dictionary with all the distances for queryImage ordered
+    :return: Dictionary with all the distances for queryText ordered
     """
 
     allResults = {}
@@ -73,6 +71,7 @@ def compareText(query_text, ddbb_text):
         # sort the results
         allResults[idx] = results
 
+    # print(allResults)
 
     return allResults
 
@@ -86,6 +85,10 @@ def getTextDistances(query_text, ddbb_text):
         if len(tuple) > 0:
             distance = textdistance.hamming.normalized_similarity(query_text, tuple[0][0])
             distance1 = textdistance.hamming.normalized_similarity(query_text, tuple[0][1])
+            # distance = textdistance.levenshtein.normalized_similarity(query_text, tuple[0][0])
+            # distance1 = textdistance.levenshtein.normalized_similarity(query_text, tuple[0][1])
+            # distance = textdistance.damerau_levenshtein.normalized_similarity(query_text, tuple[0][0])
+            # distance1 = textdistance.damerau_levenshtein.normalized_similarity(query_text, tuple[0][1])
             # print(f'Distance for ddbb paintor -{tuple[0][0]}- with query -{query_text}- is {distance}')
             # print(f'Distance for ddbb picture -{tuple[0][1]}- with query -{query_text}- is {distance1}')
             distance = max(distance, distance1)

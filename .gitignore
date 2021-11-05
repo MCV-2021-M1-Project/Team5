@@ -379,3 +379,6 @@ results/*
 test.py
 *.xml
 *.iml
+
+*.txt
+.DS_Store
