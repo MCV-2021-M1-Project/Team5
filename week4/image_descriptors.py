@@ -68,7 +68,7 @@ def keyPointMatching(img1, img2, kp1, des1, kp2, des2):
 
     src_pts = np.float32([ kp1[m.queryIdx].pt for m in good ]).reshape(-1, 2)
     dst_pts = np.float32([ kp2[m.trainIdx].pt for m in good ]).reshape(-1, 2)
-
+    return src_pts, dst_pts
     # Ransac
     if (len(src_pts) > 4) and len(dst_pts) > 4:
         model, inliers = ransac(
@@ -83,11 +83,12 @@ def keyPointMatching(img1, img2, kp1, des1, kp2, des2):
             inlier_keypoints_left = [cv2.KeyPoint(point[0], point[1], 1) for point in src_pts[inliers]]
             inlier_keypoints_right = [cv2.KeyPoint(point[0], point[1], 1) for point in dst_pts[inliers]]
             placeholder_matches = [cv2.DMatch(idx, idx, 1) for idx in range(n_inliers)]
-            img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
-            image3 = cv2.drawMatches(img1, inlier_keypoints_left, img2, inlier_keypoints_right, placeholder_matches, None, -1)
-        
-            plt.imshow(image3)
-            plt.show()
+            if len(inlier_keypoints_left) > 20:
+                img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
+                image3 = cv2.drawMatches(img1, inlier_keypoints_left, img2, inlier_keypoints_right, placeholder_matches, None, -1)
+            
+                plt.imshow(image3)
+                plt.show()
             src_pts = np.float32([ inlier_keypoints_left[m.queryIdx].pt for m in placeholder_matches ]).reshape(-1, 2)
             dst_pts = np.float32([ inlier_keypoints_right[m.trainIdx].pt for m in placeholder_matches ]).reshape(-1, 2)
             return src_pts, dst_pts
@@ -104,5 +105,8 @@ def findBestMatches(queryImg, queryKp, queryDescp, ddbb_descriptors, ddbb_images
         for kp in dbDescp[0]:
             dbKeypoint.append(cv2.KeyPoint(kp[0][0], kp[0][1], kp[1], kp[2], kp[3], kp[4], kp[5]))
         src_pts, dst_pts = keyPointMatching(queryImg, ddbb_images[name], queryKp, queryDescp, dbKeypoint, dbDescp[1])
-        if len(src_pts) > 2:
+        if len(src_pts) > 15:
+            plt.title(name)
+            plt.imshow(ddbb_images[name])
+            plt.show()
             print(f'Number of matches found for {name} is {len(src_pts)}')

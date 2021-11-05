@@ -76,10 +76,35 @@ def main():
             print('Processing image: ', filename)
             img = cv2.imread(filename)
             queryImageDenoised = denoinseImage(img)
+
+            backgroundMask = None
+            if args.mask:
+                backgroundMask, precision, recall, F1_measure = backgroundRemoval(queryImageDenoised, filename)
+                # backgroundMask = cv2.imread(filename.replace('jpg','png'), cv2.IMREAD_GRAYSCALE)
             image = cv2.cvtColor(queryImageDenoised, cv2.COLOR_BGR2GRAY)
-            descriptor = getDescriptor(args.keypoint_detection)
-            queryKp, queryDescp = descriptor.detectAndCompute(image, None)
-            findBestMatches(image, queryKp, queryDescp, ddbb_descriptors, ddbb_images)
+            
+            elems, start, end = findElementsInMask(backgroundMask)
+            imagesCropppedColored = []
+            imagesCroppped = []
+            if elems > 1:
+                for num in range(elems):
+                    imagesCroppped.append(image[start[num][0]:end[num][0],start[num][1]:end[num][1]])
+                    imagesCropppedColored.append(queryImageDenoised[start[num][0]:end[num][0],start[num][1]:end[num][1]])
+            else:
+                imagesCroppped.append(image)
+
+            for i, img in enumerate(imagesCroppped):
+                plt.imshow(img, cmap='gray')
+                plt.show()
+                textImage, textBoxMask, box = getTextAlone(imagesCropppedColored[i])
+                plt.imshow(textBoxMask, cmap='gray')
+                plt.show()
+                descriptor = getDescriptor(args.keypoint_detection)
+                imgFinal = cv2.bitwise_and(img,img,mask = cv2.bitwise_not(textBoxMask))
+                plt.imshow(imgFinal, cmap='gray')
+                plt.show()
+                queryKp, queryDescp = descriptor.detectAndCompute(imgFinal, None)
+                findBestMatches(img, queryKp, queryDescp, ddbb_descriptors, ddbb_images)
     else:
         #---------PREPARING DDBB DATA----------
         #Loading DDBB images
