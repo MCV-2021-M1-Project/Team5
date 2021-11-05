@@ -73,8 +73,10 @@ def main():
         filenames = [img for img in glob.glob(args.query_image_folder + "/*"+ ".jpg")]
         filenames.sort()
         for filename in filenames:
+            print('Processing image: ', filename)
             img = cv2.imread(filename)
-            image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            queryImageDenoised = denoinseImage(img)
+            image = cv2.cvtColor(queryImageDenoised, cv2.COLOR_BGR2GRAY)
             descriptor = getDescriptor(args.keypoint_detection)
             queryKp, queryDescp = descriptor.detectAndCompute(image, None)
             findBestMatches(image, queryKp, queryDescp, ddbb_descriptors, ddbb_images)

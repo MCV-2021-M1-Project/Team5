@@ -8,9 +8,9 @@ import os
 
 def getDescriptor(descriptor):
     if descriptor == 'SIFT':
-        return cv2.xfeatures2d.SIFT_create()
+        return cv2.xfeatures2d.SIFT_create(300)
     else:
-        return cv2.xfeatures2d.SIFT_create()
+        return cv2.xfeatures2d.SIFT_create(300)
 
 
 def getImagesDescriptors(folderPath, descriptorType):
@@ -47,6 +47,13 @@ def keyPointMatching(img1, img2, kp1, des1, kp2, des2):
     search_params = dict(checks = 50)
     flann = cv2.FlannBasedMatcher(index_params, search_params)
     matches = flann.knnMatch(des1,des2,k=2)
+    # bf = cv2.BFMatcher(cv2.NORM_L2, crossCheck=False)
+
+    # Match descriptors.
+    # matches = bf.knnMatch(des1,des2, k=2)
+
+    # Sort them in the order of their distance.
+    # matches = sorted(matches, key = lambda x:x.distance)
 
     # Lowe's Ratio test
     good = []
@@ -58,24 +65,26 @@ def keyPointMatching(img1, img2, kp1, des1, kp2, des2):
     dst_pts = np.float32([ kp2[m.trainIdx].pt for m in good ]).reshape(-1, 2)
 
     # Ransac
-    model, inliers = ransac(
-            (src_pts, dst_pts),
-            AffineTransform, min_samples=4,
-            residual_threshold=8, max_trials=10000
-        )
-
-    n_inliers = np.sum(inliers)
-
-    inlier_keypoints_left = [cv2.KeyPoint(point[0], point[1], 1) for point in src_pts[inliers]]
-    inlier_keypoints_right = [cv2.KeyPoint(point[0], point[1], 1) for point in dst_pts[inliers]]
-    placeholder_matches = [cv2.DMatch(idx, idx, 1) for idx in range(n_inliers)]
-    image3 = cv2.drawMatches(img1, inlier_keypoints_left, img2, inlier_keypoints_right, placeholder_matches, None)
-
-    plt.imshow(image3)
-    cv2.waitKey(0)
-
-    src_pts = np.float32([ inlier_keypoints_left[m.queryIdx].pt for m in placeholder_matches ]).reshape(-1, 2)
-    dst_pts = np.float32([ inlier_keypoints_right[m.trainIdx].pt for m in placeholder_matches ]).reshape(-1, 2)
+    if (len(src_pts) > 4) :
+        model, inliers = ransac(
+                (src_pts, dst_pts),
+                AffineTransform, min_samples=4,
+                residual_threshold=8, max_trials=10000
+            )
+    
+        n_inliers = np.sum(inliers)
+    
+        inlier_keypoints_left = [cv2.KeyPoint(point[0], point[1], 1) for point in src_pts[inliers]]
+        inlier_keypoints_right = [cv2.KeyPoint(point[0], point[1], 1) for point in dst_pts[inliers]]
+        placeholder_matches = [cv2.DMatch(idx, idx, 1) for idx in range(n_inliers)]
+        img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
+        image3 = cv2.drawMatches(img1, inlier_keypoints_left, img2, inlier_keypoints_right, placeholder_matches, None)
+    
+        plt.imshow(image3)
+        cv2.waitKey(0)
+    
+        src_pts = np.float32([ inlier_keypoints_left[m.queryIdx].pt for m in placeholder_matches ]).reshape(-1, 2)
+        dst_pts = np.float32([ inlier_keypoints_right[m.trainIdx].pt for m in placeholder_matches ]).reshape(-1, 2)
 
     return src_pts, dst_pts
 
