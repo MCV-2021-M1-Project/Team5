@@ -129,7 +129,9 @@ def getTextBox(image):
     peak = getMaskThreshold(gray, text_mask)
 
     # Threshold the image with the pixel value of the text box
-    mask = cv2.inRange(gray, peak - 1, peak + 1)
+    mask = cv2.inRange(gray, peak - 5, peak + 5)
+    # cv2.imshow("Image After threshold", mask)
+
     # cv2.imshow("mask_thres", mask)
 
     # Remove noises from the mask
