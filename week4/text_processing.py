@@ -10,7 +10,7 @@ if platform.system() == 'Windows':
 
 
 def imageToText(image):
-    text = pytesseract.image_to_string(image)
+    text = pytesseract.image_to_string(image, lang="eng")
     text = ' '.join(text.split())
     # print("Extracted Text: " + text)
 
