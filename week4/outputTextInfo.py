@@ -52,7 +52,7 @@ for i, inputImage in enumerate(images):
             res = cv2.bitwise_and(queryImage,queryImage,mask = auxMask)
             # cv2.imshow("Background Masked", res)
 
-            textImage, mask, box = extractTextBox.EricText(queryImage)
+            textImage, mask, box = extractTextBox.EricText(res)
 
             # textImage, textBoxMask, box = extractTextBox.getTextAlone(res)
             extractedtext = text_processing.imageToText(textImage)
