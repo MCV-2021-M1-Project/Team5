@@ -39,8 +39,8 @@ def getImagesDescriptors(folderPath, descriptorType):
 
         image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         descriptor = getDescriptor(descriptorType)
-
-        kp1, des1 = descriptor.detectAndCompute(image, None)
+        resized = cv2.resize(image, (512, 512), interpolation = cv2.INTER_AREA)
+        kp1, des1 = descriptor.detectAndCompute(resized, None)
         kpTemp = [(point.pt, point.size, point.angle, point.response, point.octave, point.class_id) for point in kp1]
 
         ddbb_descriptors[filename] = (kpTemp, des1)
@@ -59,7 +59,7 @@ def keyPointMatching(img1, img2, kp1, des1, kp2, des2, descriptorType):
     for m, n in matches:
         if m.distance < 0.8 * n.distance:
             good.append(m)
-    return len(good)
+    # return len(good)
     src_pts = np.float32([ kp1[m.queryIdx].pt for m in good ]).reshape(-1, 2)
     dst_pts = np.float32([ kp2[m.trainIdx].pt for m in good ]).reshape(-1, 2)
 
@@ -67,21 +67,22 @@ def keyPointMatching(img1, img2, kp1, des1, kp2, des2, descriptorType):
         model, inliers = ransac(
                 (src_pts, dst_pts),
                 AffineTransform, min_samples=4,
-                residual_threshold=8, max_trials=100, stop_sample_num=(int(len(src_pts) * 0.5))
+                residual_threshold=4, max_trials=100, stop_sample_num=(int(len(src_pts) * 0.5))
             )
         
         if inliers is not None:
+            return len(inliers)
             n_inliers = np.sum(inliers)
     
             inlier_keypoints_left = [cv2.KeyPoint(point[0], point[1], 1) for point in src_pts[inliers]]
             inlier_keypoints_right = [cv2.KeyPoint(point[0], point[1], 1) for point in dst_pts[inliers]]
             placeholder_matches = [cv2.DMatch(idx, idx, 1) for idx in range(n_inliers)]
-            if len(inlier_keypoints_left) > 20:
-                img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
-                image3 = cv2.drawMatches(img1, inlier_keypoints_left, img2, inlier_keypoints_right, placeholder_matches, None, -1)
-                plt.title('After RANSAC')
-                plt.imshow(image3)
-                plt.show()
+            # if len(inlier_keypoints_left) > 20:
+            #     img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
+            #     image3 = cv2.drawMatches(img1, inlier_keypoints_left, img2, inlier_keypoints_right, placeholder_matches, None, -1)
+            #     plt.title('After RANSAC')
+            #     plt.imshow(image3)
+            #     plt.show()
             src_pts = np.float32([ inlier_keypoints_left[m.queryIdx].pt for m in placeholder_matches ]).reshape(-1, 2)
             dst_pts = np.float32([ inlier_keypoints_right[m.trainIdx].pt for m in placeholder_matches ]).reshape(-1, 2)
             return len(src_pts)

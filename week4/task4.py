@@ -73,7 +73,7 @@ def main():
         filenames = [img for img in glob.glob(args.query_image_folder + "/*"+ ".jpg")]
         filenames.sort()
         resultKpMatchPickle = []
-
+        bestMatches = []
         for filename in filenames:
             print('Processing image: ', filename)
             img = cv2.imread(filename)
@@ -81,7 +81,7 @@ def main():
 
             backgroundMask = None
             if args.mask:
-                #backgroundMask, precision, recall, F1_measure = backgroundRemoval(queryImageDenoised, filename)
+                # backgroundMask, precision, recall, F1_measure = backgroundRemoval(queryImageDenoised, filename)
                 backgroundMask = cv2.imread(filename.replace('jpg','png'), cv2.IMREAD_GRAYSCALE)
             image = cv2.cvtColor(queryImageDenoised, cv2.COLOR_BGR2GRAY)
             
@@ -98,6 +98,7 @@ def main():
 
 
             bestPicturesKp = []
+            bestMatchesAux = []
             for i, img in enumerate(imagesCroppped):
                 print('Processing crop number ', i + 1)
                 # plt.imshow(img, cmap='gray')
@@ -117,19 +118,24 @@ def main():
                 descriptor = getDescriptor(args.keypoint_detection)
                 # plt.imshow(imgFinal, cmap='gray')
                 # plt.show()
-                queryKp, queryDescp = descriptor.detectAndCompute(imgFinal, None)
+                if imgFinal.shape[0] > 512 and imgFinal.shape[1] > 512:
+                    resized = cv2.resize(imgFinal, (512, 512), interpolation = cv2.INTER_AREA)
+                queryKp, queryDescp = descriptor.detectAndCompute(resized, None)
                 allResults = findBestMatches(img, queryKp, queryDescp, ddbb_descriptors, ddbb_images, args.keypoint_detection)
                 bestAuxKp = []
                 # 
                 print('Best result: ', allResults[0][0])
-                if allResults[0][0] > 50:
+                bestMatchesAux.append(allResults[0][0])
+                if allResults[0][0] > 55:
                     for score, name in allResults[0:args.k_best]:
                         bestAuxKp.append(int(Path(name).stem.split('_')[1]))
                 else:
                     bestAuxKp = [-1]
                 bestPicturesKp.append(bestAuxKp)
+            bestMatches.append(bestMatchesAux)
             resultKpMatchPickle.append(bestPicturesKp)
         
+        print(bestMatches)
         gtRes = None
         if os.path.exists(args.gt_results):
             with open(args.gt_results, 'rb') as reader:
