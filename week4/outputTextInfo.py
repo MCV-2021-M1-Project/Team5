@@ -9,18 +9,6 @@ import pickle
 from pathlib import Path
 import numpy as np
 
-def closingImage(gray, kernel_size):
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, kernel_size)
-    closing = cv2.morphologyEx(gray, cv2.MORPH_CLOSE, kernel)
-
-    return closing
-
-def openingImage(gray, kernel_size):
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, kernel_size)
-    opening = cv2.morphologyEx(gray, cv2.MORPH_OPEN, kernel)
-
-    return opening
-
 #Open query image folder
 query_image_folder = "/Users/brian/Desktop/Computer Vision/M1/Project/qsd1_w4"
 filenames = [img for img in glob.glob(query_image_folder + "/*"+ ".jpg")]
@@ -64,12 +52,7 @@ for i, inputImage in enumerate(images):
             res = cv2.bitwise_and(queryImage,queryImage,mask = auxMask)
             # cv2.imshow("Background Masked", res)
 
-            mask = contourText(queryImage)
-            mask, x, y, w, h = extractTextBox.maskToRect(queryImage, mask)
-            if w > 0 and h > 0:
-                textImage = queryImage[y:y + h, x:x + w]
-            else:
-                textImage = queryImage
+            textImage, mask, box = extractTextBox.EricText(queryImage)
 
             # textImage, textBoxMask, box = extractTextBox.getTextAlone(res)
             extractedtext = text_processing.imageToText(textImage)
@@ -90,14 +73,13 @@ for i, inputImage in enumerate(images):
             # cv2.imshow("TextImage", textImage)
             # cv2.imshow("textBoxMask", textBoxMask)
 
-            # boxes.append(box)
+            boxes.append(box)
             # cv2.waitKey(0)
         TextBoxPickle.append(boxes)
         print(texts)
     else:
         # textImage, textMask, box = extractTextBox.getTextAlone(queryImage)
-        mask = contourText(queryImage)
-        textImage = cv2.bitwise_and(queryImage, queryImage, mask=mask)
+        textImage, mask, box = extractTextBox.EricText(queryImage)
 
         extractedtext = text_processing.imageToText(textImage)
 
