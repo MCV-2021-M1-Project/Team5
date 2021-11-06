@@ -10,7 +10,8 @@ import pickle
 if __name__ == "__main__":
 
     # read args
-    dict_name = 'gt_corresps1.pkl'
+    dict_name = '../datasets/qsd1_w4/gt_corresps.pkl'
+    # dict_name = './week4/qsd1_w4/gt_corresps.pkl'
 
 
     with open(dict_name, 'rb') as fd:

@@ -72,6 +72,8 @@ def main():
         ddbb_images = loadAllImages(args.path)
         filenames = [img for img in glob.glob(args.query_image_folder + "/*"+ ".jpg")]
         filenames.sort()
+        resultKpMatchPickle = []
+
         for filename in filenames:
             print('Processing image: ', filename)
             img = cv2.imread(filename)
@@ -79,32 +81,64 @@ def main():
 
             backgroundMask = None
             if args.mask:
-                backgroundMask, precision, recall, F1_measure = backgroundRemoval(queryImageDenoised, filename)
-                # backgroundMask = cv2.imread(filename.replace('jpg','png'), cv2.IMREAD_GRAYSCALE)
+                #backgroundMask, precision, recall, F1_measure = backgroundRemoval(queryImageDenoised, filename)
+                backgroundMask = cv2.imread(filename.replace('jpg','png'), cv2.IMREAD_GRAYSCALE)
             image = cv2.cvtColor(queryImageDenoised, cv2.COLOR_BGR2GRAY)
             
-            elems, start, end = findElementsInMask(backgroundMask)
-            imagesCropppedColored = []
-            imagesCroppped = []
-            if elems > 1:
-                for num in range(elems):
-                    imagesCroppped.append(image[start[num][0]:end[num][0],start[num][1]:end[num][1]])
-                    imagesCropppedColored.append(queryImageDenoised[start[num][0]:end[num][0],start[num][1]:end[num][1]])
-            else:
-                imagesCroppped.append(image)
+            imagesCropppedColored = [queryImageDenoised]
+            imagesCroppped = [image]
+            if backgroundMask is not None:
+                elems, start, end = findElementsInMask(backgroundMask)
+                if elems > 1:
+                    imagesCropppedColored = []
+                    imagesCroppped = []
+                    for num in range(elems):
+                        imagesCroppped.append(image[start[num][0]:end[num][0],start[num][1]:end[num][1]])
+                        imagesCropppedColored.append(queryImageDenoised[start[num][0]:end[num][0],start[num][1]:end[num][1]])
 
+
+            bestPicturesKp = []
             for i, img in enumerate(imagesCroppped):
-                plt.imshow(img, cmap='gray')
-                plt.show()
-                textImage, textBoxMask, box = getTextAlone(imagesCropppedColored[i])
-                plt.imshow(textBoxMask, cmap='gray')
-                plt.show()
+                print('Processing crop number ', i + 1)
+                # plt.imshow(img, cmap='gray')
+                # plt.show()
+                imgFinal = img
+                if args.extract_text_box:
+                    # textImage, textBoxMask, box = getTextAlone(imagesCropppedColored[i])
+                    textBoxMask = np.zeros((img.shape[0], img.shape[1]), dtype="uint8")
+                    start = img.shape[0] // 4
+                    start2 = img.shape[1] // 10
+                    textBoxMask[start:(img.shape[0]-start), :] = 255
+                    imgFinal = cv2.bitwise_and(img,img,mask = (textBoxMask))
+                    # imgFinal = cv2.bitwise_and(img,img,mask = cv2.bitwise_not(textBoxMask))
+                    plt.imshow(imgFinal, cmap='gray')
+                    plt.title(filename + '_' + str(i))
+                    plt.show()
                 descriptor = getDescriptor(args.keypoint_detection)
-                imgFinal = cv2.bitwise_and(img,img,mask = cv2.bitwise_not(textBoxMask))
-                plt.imshow(imgFinal, cmap='gray')
-                plt.show()
+                # plt.imshow(imgFinal, cmap='gray')
+                # plt.show()
                 queryKp, queryDescp = descriptor.detectAndCompute(imgFinal, None)
-                findBestMatches(img, queryKp, queryDescp, ddbb_descriptors, ddbb_images)
+                allResults = findBestMatches(img, queryKp, queryDescp, ddbb_descriptors, ddbb_images, args.keypoint_detection)
+                bestAuxKp = []
+                # 
+                print('Best result: ', allResults[0][0])
+                if allResults[0][0] > 50:
+                    for score, name in allResults[0:args.k_best]:
+                        bestAuxKp.append(int(Path(name).stem.split('_')[1]))
+                else:
+                    bestAuxKp = [-1]
+                bestPicturesKp.append(bestAuxKp)
+            resultKpMatchPickle.append(bestPicturesKp)
+        
+        gtRes = None
+        if os.path.exists(args.gt_results):
+            with open(args.gt_results, 'rb') as reader:
+                gtRes = pickle.load(reader)
+            flattened = [np.array(sublist).flatten() for sublist in resultKpMatchPickle]
+            resultScore = mapk(gtRes, flattened, args.k_best)
+            print(f'KeyPoint matching average precision for k = {args.k_best} is {resultScore}.')
+            with open(f'{args.keypoint_detection}_result.pkl', 'wb') as handle:
+                pickle.dump(resultKpMatchPickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
     else:
         #---------PREPARING DDBB DATA----------
         #Loading DDBB images
