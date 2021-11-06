@@ -64,8 +64,8 @@ for i, inputImage in enumerate(images):
                 painter_name = ""
                 painting_name = ""
 
-            distance = textdistance.hamming.normalized_similarity(extractedtext, painter_name)
-            distance1 = textdistance.hamming.normalized_similarity(extractedtext, painting_name)
+            distance = textdistance.levenshtein.normalized_similarity(extractedtext, painter_name)
+            distance1 = textdistance.levenshtein.normalized_similarity(extractedtext, painting_name)
             distance = max(distance, distance1)
             print(distance)
             distance_list.append(distance)
@@ -88,8 +88,8 @@ for i, inputImage in enumerate(images):
             lines = file.readlines()
             painter_name, painting_name = text_processing.readTextFromFile(lines[0])
 
-        distance = textdistance.hamming.normalized_similarity(extractedtext, painter_name)
-        distance1 = textdistance.hamming.normalized_similarity(extractedtext, painting_name)
+        distance = textdistance.levenshtein.normalized_similarity(extractedtext, painter_name)
+        distance1 = textdistance.levenshtein.normalized_similarity(extractedtext, painting_name)
         distance = max(distance, distance1)
 
         print(distance)
