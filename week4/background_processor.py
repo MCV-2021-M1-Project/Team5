@@ -122,61 +122,11 @@ def cleanerH(mask):
 
 
 def backgroundRemoval(queryImage, filename):
-    #Converting image to HSV and Lab
-    queryImageHSV = cv2.cvtColor(queryImage, cv2.COLOR_BGR2HSV)
+    #Converting image to Greyscale
+    queryImageGray = cv2.cvtColor(queryImage, cv2.COLOR_BGR2GRAY)
     
-    #Splitting in HSV and Lab channels
-    h, s, v = cv2.split(queryImageHSV)
-    #print(h.shape)
-    
-    #Image middle reference points:
-    midX = round(queryImageHSV.shape[1]/2)
-    midY = round(queryImageHSV.shape[0]/2)
-    
-    #Determining saturation and lightness from pixels in corners abd middle of edges
-    #Corners
-    avgS_TL, avgV_TL = np.mean(s[0:10, 0:10]), np.mean(v[0:10, 0:10])
-    avgS_BL, avgV_BL = np.mean(s[-10:, 0:10]), np.mean(v[-10:, 0:10])
-    avgS_TR, avgV_TR = np.mean(s[0:10, -10:]), np.mean(v[0:10, -10:])
-    avgS_BR, avgV_BR = np.mean(s[-10:, -10:]), np.mean(v[-10:, -10:])
-    #Edges
-    avgS_ET, avgV_ET = np.mean(s[0:10, midX-5:midX+5]), np.mean(v[0:10, midX-5:midX+5])
-    avgS_ER, avgV_ER = np.mean(s[midY-5:midY+5:, 0:10]), np.mean(v[midY-5:midY+5:, 0:10])
-    avgS_EB, avgV_EB = np.mean(s[-10:, midX-5:midX+5]), np.mean(v[-10:, midX-5:midX+5])
-    avgS_EL, avgV_EL = np.mean(s[midY-5:midY+5:, -10:]), np.mean(v[midY-5:midY+5:, -10:])
-    
-    avgS_list = [avgS_TL, avgS_BL, avgS_TR, avgS_BR, avgS_ET, avgS_ER, avgS_EB, avgS_EL]
-    avgV_list = [avgV_TL, avgV_BL, avgV_TR, avgV_BR, avgV_ET, avgV_ER, avgV_EB, avgV_EL]
-    
-    #Computing general means for saturation and lightness
-    avgS, stdDevS = stat.mean(avgS_list), stat.stdev(avgS_list)
-    avgV, stdDevV = stat.mean(avgV_list), stat.stdev(avgV_list)
-    
-    #The corners of each picture are usually slightly more saturated and darker
-    #We lower the avgS by 10 and increase the avgV by 20 to compensate
-    if avgS > 10: #Avoiding levels under 10
-        avgS -= 10
-    avgV += 20
-    
-    #print(stdDevS, stdDevV)
-    
-    #Width of the thresholds based on standard deviations (with established minimums)
-    widthS_thresh, widthV_thresh = max(60, stdDevS * 3.2), max(70, stdDevV * 3.4)
-    
-    #Computing thresholds
-    threshMinS, threshMaxS = avgS - widthS_thresh, avgS + widthS_thresh
-    threshMinV, threshMaxV = avgV - widthV_thresh, avgV + widthV_thresh
-
-    #Masks based on thresholds
-    _, mask1S = cv2.threshold(s, threshMaxS, 255, cv2.THRESH_BINARY)
-    _, mask2S = cv2.threshold(s, threshMinS, 255, cv2.THRESH_BINARY_INV)
-    maskS = mask1S + mask2S
-    _, mask1V = cv2.threshold(v, threshMaxV, 255, cv2.THRESH_BINARY)
-    _, mask2V = cv2.threshold(v, threshMinV, 255, cv2.THRESH_BINARY_INV)
-    maskV = mask1V + mask2V
-
-    #Combining masks into a single mask
-    mask = cv2.bitwise_not(intersect_matrices(cv2.bitwise_not(maskS), cv2.bitwise_not(maskV)))
+    #Draw contours
+    mask = cv2.Canny(queryImageGray,50,160)
     
     #Ensuring there are no open regions on edges (10px minimum)
     mask[0:10, :], mask[-10:, :], mask[:, 0:10], mask[:, -10:] = 0, 0, 0, 0
@@ -204,30 +154,30 @@ def backgroundRemoval(queryImage, filename):
     #Exporting mask as .png file
     cv2.imwrite(os.path.basename(filename).replace('jpg', 'png'), maskFinal)
 
-    # plt.imshow(cv2.cvtColor(mask, cv2.COLOR_BGR2RGB))
-    # plt.axis("off")
-    # plt.title('Mask basic')
-    # plt.show()
+    plt.imshow(cv2.cvtColor(mask, cv2.COLOR_BGR2RGB))
+    plt.axis("off")
+    plt.title('Mask basic')
+    plt.show()
 
-    # plt.imshow(cv2.cvtColor(maskClean, cv2.COLOR_BGR2RGB))
-    # plt.axis("off")
-    # plt.title('Mask cleaned')
-    # plt.show()
+    plt.imshow(cv2.cvtColor(maskClean, cv2.COLOR_BGR2RGB))
+    plt.axis("off")
+    plt.title('Mask cleaned')
+    plt.show()
     
-    # plt.imshow(cv2.cvtColor(maskClosing, cv2.COLOR_BGR2RGB))
-    # plt.axis("off")
-    # plt.title('Mask closing')
-    # plt.show()
+    plt.imshow(cv2.cvtColor(maskClosing, cv2.COLOR_BGR2RGB))
+    plt.axis("off")
+    plt.title('Mask closing')
+    plt.show()
     
-    # plt.imshow(cv2.cvtColor(maskOpening, cv2.COLOR_BGR2RGB))
-    # plt.axis("off")
-    # plt.title('Mask opening')
-    # plt.show()
+    plt.imshow(cv2.cvtColor(maskOpening, cv2.COLOR_BGR2RGB))
+    plt.axis("off")
+    plt.title('Mask opening')
+    plt.show()
     
-    # plt.imshow(cv2.cvtColor(maskFinal, cv2.COLOR_BGR2RGB))
-    # plt.axis("off")
-    # plt.title('Final mask')
-    # plt.show()
+    plt.imshow(cv2.cvtColor(maskFinal, cv2.COLOR_BGR2RGB))
+    plt.axis("off")
+    plt.title('Final mask')
+    plt.show()
 
     # Mask evaluation
     annotationPath = filename.replace('jpg', 'png')
