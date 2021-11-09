@@ -59,7 +59,7 @@ def keyPointMatching(img1, img2, kp1, des1, kp2, des2, descriptorType):
     for m, n in matches:
         if m.distance < 0.8 * n.distance:
             good.append(m)
-    # return len(good)
+
     src_pts = np.float32([ kp1[m.queryIdx].pt for m in good ]).reshape(-1, 2)
     dst_pts = np.float32([ kp2[m.trainIdx].pt for m in good ]).reshape(-1, 2)
 
@@ -71,24 +71,22 @@ def keyPointMatching(img1, img2, kp1, des1, kp2, des2, descriptorType):
             )
         
         if inliers is not None:
-            return len(inliers)
-            n_inliers = np.sum(inliers)
+            # n_inliers = np.sum(inliers)
     
-            inlier_keypoints_left = [cv2.KeyPoint(point[0], point[1], 1) for point in src_pts[inliers]]
-            inlier_keypoints_right = [cv2.KeyPoint(point[0], point[1], 1) for point in dst_pts[inliers]]
-            placeholder_matches = [cv2.DMatch(idx, idx, 1) for idx in range(n_inliers)]
-            # if len(inlier_keypoints_left) > 20:
+            # inlier_keypoints_left = [cv2.KeyPoint(point[0], point[1], 1) for point in src_pts[inliers]]
+            # inlier_keypoints_right = [cv2.KeyPoint(point[0], point[1], 1) for point in dst_pts[inliers]]
+            # placeholder_matches = [cv2.DMatch(idx, idx, 1) for idx in range(n_inliers)]
+            # if len(inliers) < 40 and len(inliers) > 20:
             #     img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
             #     image3 = cv2.drawMatches(img1, inlier_keypoints_left, img2, inlier_keypoints_right, placeholder_matches, None, -1)
             #     plt.title('After RANSAC')
             #     plt.imshow(image3)
             #     plt.show()
-            src_pts = np.float32([ inlier_keypoints_left[m.queryIdx].pt for m in placeholder_matches ]).reshape(-1, 2)
-            dst_pts = np.float32([ inlier_keypoints_right[m.trainIdx].pt for m in placeholder_matches ]).reshape(-1, 2)
-            return len(src_pts)
+            # src_pts = np.float32([ inlier_keypoints_left[m.queryIdx].pt for m in placeholder_matches ]).reshape(-1, 2)
+            # dst_pts = np.float32([ inlier_keypoints_right[m.trainIdx].pt for m in placeholder_matches ]).reshape(-1, 2)
+            return len(inliers)
         else:
             return 0
-    
     else:
         return 0
 
@@ -99,7 +97,8 @@ def findBestMatches(queryImg, queryKp, queryDescp, ddbb_descriptors, ddbb_images
         dbKeypoint = []
         for kp in dbDescp[0]:
             dbKeypoint.append(cv2.KeyPoint(kp[0][0], kp[0][1], kp[1], kp[2], kp[3], kp[4], kp[5]))
-        matches = keyPointMatching(queryImg, ddbb_images[name], queryKp, queryDescp, dbKeypoint, dbDescp[1], descriptorType)
+        resized = cv2.resize(ddbb_images[name], (512, 512), interpolation = cv2.INTER_AREA)
+        matches = keyPointMatching(queryImg, resized, queryKp, queryDescp, dbKeypoint, dbDescp[1], descriptorType)
         bestMatches[name] = matches
         # if len(src_pts) > 24:
             # plt.title(name)
