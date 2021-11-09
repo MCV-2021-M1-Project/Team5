@@ -7,16 +7,16 @@ import pickle
 import pandas as pd
 import numpy as np
 from plot import plotResults
-import constants as C
+from timeit import default_timer as timer
 from average_metrics import mapk
 from matplotlib import pyplot as plt
 from denoise_image import denoinseImage
 from histogram_processing import getColorHistograms, compareColorHistograms, getColorHistogramForQueryImage, loadAllImages
 from texture_histograms import getTextureHistograms, compareTextureHistograms, getTextureHistogramForQueryImage
 from text_processing import getImagesGtText, compareText, imageToText
-from extractTextBox import getTextAlone
+from extractTextBox import getTextAlone, EricText
 from background_processor import backgroundRemoval, findElementsInMask
-from image_descriptors import getImagesDescriptors, getDescriptor, keyPointMatching, findBestMatches
+from image_descriptors import getImagesDescriptors, getDescriptor, findBestMatches
 
 
 def parse_args():
@@ -72,14 +72,83 @@ def main():
         ddbb_images = loadAllImages(args.path)
         filenames = [img for img in glob.glob(args.query_image_folder + "/*"+ ".jpg")]
         filenames.sort()
+        resultKpMatchPickle = []
+        bestMatches = []
+        start = timer()
         for filename in filenames:
             print('Processing image: ', filename)
             img = cv2.imread(filename)
             queryImageDenoised = denoinseImage(img)
+
+            backgroundMask = None
+            if args.mask:
+                backgroundMask, precision, recall, F1_measure = backgroundRemoval(queryImageDenoised, filename)
+                # backgroundMask = cv2.imread(filename.replace('jpg','png'), cv2.IMREAD_GRAYSCALE)
             image = cv2.cvtColor(queryImageDenoised, cv2.COLOR_BGR2GRAY)
-            descriptor = getDescriptor(args.keypoint_detection)
-            queryKp, queryDescp = descriptor.detectAndCompute(image, None)
-            findBestMatches(image, queryKp, queryDescp, ddbb_descriptors, ddbb_images)
+            
+            imagesCropppedColored = [queryImageDenoised]
+            imagesCroppped = [image]
+            if backgroundMask is not None:
+                elems, start, end = findElementsInMask(backgroundMask)
+                if elems > 1:
+                    imagesCropppedColored = []
+                    imagesCroppped = []
+                    for num in range(elems):
+                        imagesCroppped.append(image[start[num][0]:end[num][0],start[num][1]:end[num][1]])
+                        imagesCropppedColored.append(queryImageDenoised[start[num][0]:end[num][0],start[num][1]:end[num][1]])
+
+
+            bestPicturesKp = []
+            for i, img in enumerate(imagesCroppped):
+                print('Processing crop number ', i + 1)
+                # plt.imshow(img, cmap='gray')
+                # plt.show()
+                imgFinal = img
+                if args.extract_text_box:
+                    textImage, textBoxMask, box = EricText(imagesCropppedColored[i])
+                    pixels = np.sum(textBoxMask) // 255
+                    if pixels > 0.2 * (textBoxMask.shape[0] * textBoxMask.shape[1]):
+                        textBoxMask = np.zeros((img.shape[0], img.shape[1]), dtype="uint8")
+                        start = img.shape[0] // 4
+                        start2 = img.shape[1] // 10
+                        textBoxMask[start:(img.shape[0]-start), :] = 255
+                        imgFinal = cv2.bitwise_and(img,img,mask = (textBoxMask))
+                    else:
+                        imgFinal = cv2.bitwise_and(img,img,mask = cv2.bitwise_not(textBoxMask))
+                    # plt.imshow(imgFinal, cmap='gray')
+                    # plt.title(filename + '_' + str(i))
+                    # plt.show()
+                descriptor = getDescriptor(args.keypoint_detection)
+                # plt.imshow(imgFinal, cmap='gray')
+                # plt.show()
+                resized = imgFinal
+                if imgFinal.shape[0] > 512 and imgFinal.shape[1] > 512:
+                    resized = cv2.resize(imgFinal, (512, 512), interpolation = cv2.INTER_AREA)
+                queryKp, queryDescp = descriptor.detectAndCompute(resized, None)
+                allResults = findBestMatches(resized, queryKp, queryDescp, ddbb_descriptors, ddbb_images, args.keypoint_detection)
+                
+                bestAuxKp = []
+                bestMatches.append(allResults[0][0])
+                if allResults[0][0] > 33:
+                    for score, name in allResults[0:args.k_best]:
+                        bestAuxKp.append(int(Path(name).stem.split('_')[1]))
+                else:
+                    bestAuxKp = [-1]
+                bestPicturesKp.append(bestAuxKp)
+            resultKpMatchPickle.append(bestPicturesKp)
+        
+        print('Best matches',bestMatches)
+        end = timer()
+
+        gtRes = None
+        if os.path.exists(args.gt_results):
+            with open(args.gt_results, 'rb') as reader:
+                gtRes = pickle.load(reader)
+            flattened = [np.array(sublist).flatten() for sublist in resultKpMatchPickle]
+            resultScore = mapk(gtRes, flattened, args.k_best)
+            print(f'KeyPoint matching average precision for k = {args.k_best} is {resultScore:.4f} in {end - start}.')
+            with open(f'{args.keypoint_detection}_result.pkl', 'wb') as handle:
+                pickle.dump(resultKpMatchPickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
     else:
         #---------PREPARING DDBB DATA----------
         #Loading DDBB images
@@ -188,9 +257,6 @@ def main():
                         textBoxMasks.append(textBoxMask)
                         textImages.append(textImage)
                         backgroundMask = cv2.bitwise_not(textBoxMask)
-                        # plt.imshow(cv2.cvtColor(backgroundMask, cv2.COLOR_BGR2RGB))
-                        # plt.axis("off")
-                        # plt.show()
                         masks.append(backgroundMask)
                 else:
                     elems, start, end = findElementsInMask(backgroundMask)
@@ -199,20 +265,15 @@ def main():
                         for num in range(elems):
                             auxMask = np.zeros(backgroundMask.shape, dtype="uint8")
                             auxMask[start[num][0]:end[num][0],start[num][1]:end[num][1]] = 255
-                            # cv2.imshow("Background Mask", auxMask)
-                            # cv2.waitKey(0)
+
                             if args.extract_text_box:
                                 res = cv2.bitwise_and(queryImage,queryImage,mask = auxMask)
                                 textImage, textBoxMask, box = getTextAlone(res)
-                                # cv2.imshow("TextImage", textImage)
-                                # cv2.imshow("textBoxMask", textBoxMask)
                                 boxes.append(box)
                                 textBoxMasks.append(textBoxMask)
                                 textImages.append(textImage)
                                 auxMask = cv2.bitwise_and(auxMask,auxMask,mask = cv2.bitwise_not(textBoxMask))
-                            # plt.imshow(cv2.cvtColor(auxMask, cv2.COLOR_BGR2RGB))
-                            # plt.axis("off")
-                            # plt.show()
+
                             masks.append(auxMask)
                         TextBoxPickle.append(boxes)
                     else:
@@ -222,14 +283,9 @@ def main():
                             textImages.append(textImage)
                             TextBoxPickle.append([box])
                             auxMask = cv2.bitwise_and(backgroundMask,backgroundMask,mask = cv2.bitwise_not(textMask))
-                            # plt.imshow(cv2.cvtColor(auxMask, cv2.COLOR_BGR2RGB))
-                            # plt.axis("off")
-                            # plt.show()
+
                             masks.append(auxMask)
                         else:
-                            # plt.imshow(cv2.cvtColor(backgroundMask, cv2.COLOR_BGR2RGB))
-                            # plt.axis("off")
-                            # plt.show()
                             masks.append(backgroundMask)
 
                 #-------------------------------------------
