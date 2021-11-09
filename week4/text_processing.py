@@ -10,7 +10,7 @@ if platform.system() == 'Windows':
 
 
 def imageToText(image):
-    text = pytesseract.image_to_string(image)
+    text = pytesseract.image_to_string(image, lang="eng")
     text = ' '.join(text.split())
     # print("Extracted Text: " + text)
 
@@ -83,10 +83,10 @@ def getTextDistances(query_text, ddbb_text):
         # using the method and update the results dictionary
         distance = 0
         if len(tuple) > 0:
-            distance = textdistance.hamming.normalized_similarity(query_text, tuple[0][0])
-            distance1 = textdistance.hamming.normalized_similarity(query_text, tuple[0][1])
-            # distance = textdistance.levenshtein.normalized_similarity(query_text, tuple[0][0])
-            # distance1 = textdistance.levenshtein.normalized_similarity(query_text, tuple[0][1])
+            # distance = textdistance.hamming.normalized_similarity(query_text, tuple[0][0])
+            # distance1 = textdistance.hamming.normalized_similarity(query_text, tuple[0][1])
+            distance = textdistance.levenshtein.normalized_similarity(query_text, tuple[0][0])
+            distance1 = textdistance.levenshtein.normalized_similarity(query_text, tuple[0][1])
             # distance = textdistance.damerau_levenshtein.normalized_similarity(query_text, tuple[0][0])
             # distance1 = textdistance.damerau_levenshtein.normalized_similarity(query_text, tuple[0][1])
             # print(f'Distance for ddbb paintor -{tuple[0][0]}- with query -{query_text}- is {distance}')

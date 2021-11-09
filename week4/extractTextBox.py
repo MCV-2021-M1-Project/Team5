@@ -129,7 +129,9 @@ def getTextBox(image):
     peak = getMaskThreshold(gray, text_mask)
 
     # Threshold the image with the pixel value of the text box
-    mask = cv2.inRange(gray, peak - 1, peak + 1)
+    mask = cv2.inRange(gray, peak - 5, peak + 5)
+    # cv2.imshow("Image After threshold", mask)
+
     # cv2.imshow("mask_thres", mask)
 
     # Remove noises from the mask
@@ -230,6 +232,107 @@ def getTextBoundingBox(imageInput, folder = None, boxes_pkl = None):
         mask = getTextBox(imageBGR)
         mask, x, y, w, h = maskToRect(imageBGR, mask)
         return convertBox(x, y, w, h)
+
+def fillerDown(edgesLow, edgesHigh):
+    i = 1 #Column iterator
+    j = 1 #Row iterator
+    while i < edgesLow.shape[1]:
+        fillerActive = False
+        while j < edgesLow.shape[0]:
+            if edgesLow[j, i] == 255:
+                fillerActive = True
+                fillerStart = j
+            elif fillerActive == True and edgesHigh[j, i] == 255:
+                fillerActive = False
+                edgesLow[(fillerStart+1):j, i] = 255
+            j += 1
+        j = 0
+        i += 1
+    return edgesLow
+
+def fillerUp(edgesLow, edgesHigh):
+    i = edgesLow.shape[1]-1 #Column iterator
+    j = edgesLow.shape[0]-1 #Row iterator
+    while i > 0:
+        fillerActive = False
+        while j > 0:
+            if edgesLow[j, i] == 255:
+                fillerActive = True
+                fillerEnd = j
+            elif fillerActive == True and edgesHigh[j, i] == 255:
+                fillerActive = False
+                edgesLow[j:fillerEnd, i] = 255
+            j -= 1
+        j = edgesLow.shape[0]-1
+        i -= 1
+    return edgesLow
+
+def fillerRight(edgesLow, edgesHigh):
+    i = 1 #Column iterator
+    j = 1 #Row iterator
+    while j < edgesLow.shape[0]:
+        fillerActive = False
+        while i < edgesLow.shape[1]:
+            if edgesLow[j, i] == 255:
+                fillerActive = True
+                fillerStart = i
+            elif fillerActive == True and edgesHigh[j, i] == 255:
+                fillerActive = False
+                edgesLow[j, (fillerStart+1):i] = 255
+            i += 1
+        i = 0
+        j += 1
+    return edgesLow
+
+def fillerLeft(edgesLow, edgesHigh):
+    i = edgesLow.shape[1]-1 #Column iterator
+    j = edgesLow.shape[0]-1 #Row iterator
+    while j > 0:
+        fillerActive = False
+        while i > 0:
+            if edgesLow[j, i] == 255:
+                fillerActive = True
+                fillerEnd = i
+            elif fillerActive == True and edgesHigh[j, i] == 255:
+                fillerActive = False
+                edgesLow[j, i:fillerEnd] = 255
+            i -= 1
+        i = edgesLow.shape[1]-1
+        j -= 1
+    return edgesLow
+
+def EricText(image):
+    edgesLow = cv2.Canny(image, 200, 700)
+    edgesHigh = cv2.Canny(image, 20, 150)
+
+    # cv2.imshow("edgesLow", edgesLow)
+    # cv2.imshow("edgesHigh", edgesHigh)
+
+    closed = closingImage(edgesLow, (100, 10))
+
+    opened = openingImage(closed, (200, 10))
+
+    edgesLow = fillerDown(opened, edgesHigh)
+
+    edgesLow = fillerUp(edgesLow, edgesHigh)
+
+    edgesLow = fillerRight(edgesLow, edgesHigh)
+
+    edgesLow = fillerLeft(edgesLow, edgesHigh)
+
+    result = closingImage(edgesLow, (100, 100))
+
+    result = openingImage(result, (60, 10))
+    # cv2.imshow("result", result)
+    # cv2.waitKey(0)
+
+    mask, x, y, w, h = maskToRect(image, result)
+    if w > 0 and h > 0:
+        img_cropped = image[y:y + h, x:x + w]
+    else:
+        img_cropped = image
+    box = convertBox(x, y, w, h)
+    return img_cropped, mask, box
 
 def test():
     # construct the argument parser and parse the arguments
