@@ -2,15 +2,14 @@ import os
 import cv2
 from statistics import mean
 from matplotlib import pyplot as plt
-from matplotlib.colors import Normalize
-import matplotlib.cm as cm
+import pickle
 import numpy as np
 from skimage.feature import local_binary_pattern
 from scipy.fftpack import dct
 import constants as C
 from average_metrics import getDistances
-from background_processor import backgroundRemoval, intersect_matrices, findElementsInMask
-from extractTextBox import getTextBoundingBoxAlone
+from background_processor import intersect_matrices
+
 
 #Select texture method to be applied
 textureMethod = "DCT"
@@ -197,3 +196,18 @@ def plotHistogram(hist):
     plt.xlim([150])
 
     plt.show()
+
+def loadTextureHistograms(textureHistogramsFile, folderPath, split):
+    if os.path.exists(textureHistogramsFile):
+        #Load histograms for DB
+        with open(textureHistogramsFile, 'rb') as reader:
+            print('Load existing texture histograms...')
+            ddbb_texture_histograms = pickle.load(reader)
+            print('Done loading texture histograms.')
+    else:
+        ddbb_texture_histograms = getTextureHistograms(folderPath, split)
+        #Save histograms for next time
+        with open(textureHistogramsFile, 'wb') as handle:
+            pickle.dump(ddbb_texture_histograms, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    
+    return ddbb_texture_histograms

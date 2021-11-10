@@ -176,6 +176,8 @@ def crop_minAreaRect(img, rect):
     center = rect[0]
     size = rect[1]
     angle = rect[2]
+    if abs(angle) > 45.0:
+        angle = angle + 90.0
     center, size = tuple(map(int, center)), tuple(map(int, size))
 
     # get row and col num in img
@@ -186,5 +188,7 @@ def crop_minAreaRect(img, rect):
     img_rot = cv2.warpAffine(img, M, (width, height))
 
     img_crop = cv2.getRectSubPix(img_rot, size, center)
-
+    plt.title('Rotation:' + str(angle))
+    plt.imshow(img_crop)
+    plt.show()
     return img_crop

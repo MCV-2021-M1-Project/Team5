@@ -5,8 +5,8 @@ from matplotlib import pyplot as plt
 import numpy as np
 import constants as C
 from average_metrics import getDistances
-from background_processor import backgroundRemoval, intersect_matrices, findElementsInMask
-from extractTextBox import getTextBoundingBoxAlone
+from background_processor import intersect_matrices
+import pickle
 
 def getSingleColorHistogram(image, channels, mask, bins, colorRange, sections = 1, maskPos = []):
     if sections <= 1:
@@ -160,3 +160,18 @@ def compareColorHistograms(queryHist, ddbb_histograms):
         allResults[0] = sorted([(v, k) for (k, v) in results.items()], reverse=False)
         
     return allResults
+
+def loadColorHistograms(colorHistogramsFile, folderPath, color_space, split):
+    if os.path.exists(colorHistogramsFile):
+        #Load histograms for DB, they are always the same for a space color and split level
+        with open(colorHistogramsFile, 'rb') as reader:
+            print('Load existing color histograms...')
+            ddbb_color_histograms = pickle.load(reader)
+            print('Done loading color histograms.')
+    else:
+        ddbb_color_histograms = getColorHistograms(folderPath, color_space, split)
+        #Save histograms for next time
+        with open(colorHistogramsFile, 'wb') as handle:
+            pickle.dump(ddbb_color_histograms, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    
+    return ddbb_color_histograms

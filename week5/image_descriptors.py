@@ -1,8 +1,9 @@
 import cv2
 from matplotlib import pyplot as plt
 from skimage.measure import ransac
-from skimage.transform import ProjectiveTransform, AffineTransform
+from skimage.transform import AffineTransform
 from skimage.feature import match_descriptors
+import pickle
 import numpy as np
 import os
 from tqdm import tqdm
@@ -97,13 +98,30 @@ def findBestMatches(queryImg, queryKp, queryDescp, ddbb_descriptors, ddbb_images
         dbKeypoint = []
         for kp in dbDescp[0]:
             dbKeypoint.append(cv2.KeyPoint(kp[0][0], kp[0][1], kp[1], kp[2], kp[3], kp[4], kp[5]))
-        resized = cv2.resize(ddbb_images[name], (512, 512), interpolation = cv2.INTER_AREA)
+        if name in ddbb_images:
+            resized = cv2.resize(ddbb_images[name], (512, 512), interpolation = cv2.INTER_AREA)
+        else:
+            resized = None
         matches = keyPointMatching(queryImg, resized, queryKp, queryDescp, dbKeypoint, dbDescp[1], descriptorType)
         bestMatches[name] = matches
-        # if len(src_pts) > 24:
-            # plt.title(name)
-            # plt.imshow(ddbb_images[name])
-            # plt.show()
-            # print(f'Number of matches found for {name} is {matches}')
+
     result = sorted([(v, k) for (k, v) in bestMatches.items()], reverse=True)
     return result
+
+
+def loadImageDescriptors(descriptorFile, folderPath, keypoint_detection):
+    if os.path.exists(descriptorFile):
+        #Load histograms for DB, they are always the same for a space color and split level
+        with open(descriptorFile, 'rb') as reader:
+            print('Load existing descriptors...')
+            ddbb_descriptors = pickle.load(reader)
+            print('Done loading descriptors.')
+    else:
+        print('Extracting descriotors from DB images...')
+        ddbb_descriptors = getImagesDescriptors(folderPath, keypoint_detection)
+        print('Descriotors from DB images extracted.')
+        #Save histograms for next time
+        with open(descriptorFile, 'wb') as handle:
+            pickle.dump(ddbb_descriptors, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    
+    return ddbb_descriptors

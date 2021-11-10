@@ -11,12 +11,12 @@ from timeit import default_timer as timer
 from average_metrics import mapk
 from matplotlib import pyplot as plt
 from denoise_image import denoinseImage
-from histogram_processing import getColorHistograms, compareColorHistograms, getColorHistogramForQueryImage, loadAllImages
-from texture_histograms import getTextureHistograms, compareTextureHistograms, getTextureHistogramForQueryImage
+from histogram_processing import loadColorHistograms, compareColorHistograms, getColorHistogramForQueryImage, loadAllImages
+from texture_histograms import loadTextureHistograms, compareTextureHistograms, getTextureHistogramForQueryImage
 from text_processing import getImagesGtText, compareText, imageToText
 from extractTextBox import getTextAlone, EricText
-from background_processor import backgroundRemoval, findElementsInMask
-from image_descriptors import getImagesDescriptors, getDescriptor, findBestMatches
+from background_processor import backgroundRemoval, findElementsInMask, crop_minAreaRect
+from image_descriptors import loadImageDescriptors, getDescriptor, findBestMatches
 
 
 def parse_args():
@@ -33,8 +33,8 @@ def parse_args():
     parser.add_argument('-m', '--mask', type=bool, default=False, help='Set True to remove background')
     parser.add_argument('-t', '--extract_text_box', type=bool, default=False, help='Set True to extract the text bounding box')
     parser.add_argument('-plt', '--plot_result', type=bool, default=False, help='Set to True to plot results')
-    parser.add_argument('-w', '--weights', type=list, default=[0, 1, 0], help='weights for combining descriptors')
-    parser.add_argument('-kpd', '--keypoint_detection', type=str, default='', help='Use keypoints to match images, the type of descriptor to use')
+    parser.add_argument('-w', '--weights', type=list, default=[0, 1, 0, 1], help='weights for combining descriptors')
+    parser.add_argument('-kpd', '--keypoint_detection', type=str, default='ORB', help='Use keypoints to match images, the type of descriptor to use')
     return parser.parse_args()
 
 def oneTake(x):
@@ -54,129 +54,27 @@ def main():
         
         resultScore = mapk(gtRes, computedRes, args.k_best)
         print(f'Average precision in {args.computed_results} for k = {args.k_best} is {resultScore}.')
-    elif len(args.keypoint_detection) > 0:
-        descriptorFile = f'ddbb_{args.keypoint_detection}_descriptor.pkl'
-        if os.path.exists(descriptorFile):
-            #Load histograms for DB, they are always the same for a space color and split level
-            with open(descriptorFile, 'rb') as reader:
-                print('Load existing descriptors...')
-                ddbb_descriptors = pickle.load(reader)
-                print('Done loading descriptors.')
-        else:
-            print('Extracting descriotors from DB images...')
-            ddbb_descriptors = getImagesDescriptors(args.path, args.keypoint_detection)
-            print('Descriotors from DB images extracted.')
-            #Save histograms for next time
-            with open(descriptorFile, 'wb') as handle:
-                pickle.dump(ddbb_descriptors, handle, protocol=pickle.HIGHEST_PROTOCOL)
-        ddbb_images = loadAllImages(args.path)
-        filenames = [img for img in glob.glob(args.query_image_folder + "/*"+ ".jpg")]
-        filenames.sort()
-        resultKpMatchPickle = []
-        bestMatches = []
-        start = timer()
-        for filename in filenames:
-            print('Processing image: ', filename)
-            img = cv2.imread(filename)
-            queryImageDenoised = denoinseImage(img)
 
-            backgroundMask = None
-            if args.mask:
-                backgroundMask, precision, recall, F1_measure = backgroundRemoval(queryImageDenoised, filename)
-                # backgroundMask = cv2.imread(filename.replace('jpg','png'), cv2.IMREAD_GRAYSCALE)
-            image = cv2.cvtColor(queryImageDenoised, cv2.COLOR_BGR2GRAY)
-            
-            imagesCropppedColored = [queryImageDenoised]
-            imagesCroppped = [image]
-            if backgroundMask is not None:
-                elems, start, end = findElementsInMask(backgroundMask)
-                if elems > 1:
-                    imagesCropppedColored = []
-                    imagesCroppped = []
-                    for num in range(elems):
-                        imagesCroppped.append(image[start[num][0]:end[num][0],start[num][1]:end[num][1]])
-                        imagesCropppedColored.append(queryImageDenoised[start[num][0]:end[num][0],start[num][1]:end[num][1]])
-
-
-            bestPicturesKp = []
-            for i, img in enumerate(imagesCroppped):
-                print('Processing crop number ', i + 1)
-                imgFinal = img
-                if args.extract_text_box:
-                    textImage, textBoxMask, box = EricText(imagesCropppedColored[i])
-                    pixels = np.sum(textBoxMask) // 255
-                    if pixels > 0.2 * (textBoxMask.shape[0] * textBoxMask.shape[1]):
-                        textBoxMask = np.zeros((img.shape[0], img.shape[1]), dtype="uint8")
-                        start = img.shape[0] // 4
-                        start2 = img.shape[1] // 10
-                        textBoxMask[start:(img.shape[0]-start), :] = 255
-                        imgFinal = cv2.bitwise_and(img,img,mask = (textBoxMask))
-                    else:
-                        imgFinal = cv2.bitwise_and(img,img,mask = cv2.bitwise_not(textBoxMask))
-                descriptor = getDescriptor(args.keypoint_detection)
-
-                resized = imgFinal
-                if imgFinal.shape[0] > 512 and imgFinal.shape[1] > 512:
-                    resized = cv2.resize(imgFinal, (512, 512), interpolation = cv2.INTER_AREA)
-                queryKp, queryDescp = descriptor.detectAndCompute(resized, None)
-                allResults = findBestMatches(resized, queryKp, queryDescp, ddbb_descriptors, ddbb_images, args.keypoint_detection)
-                
-                bestAuxKp = []
-                bestMatches.append(allResults[0][0])
-                if allResults[0][0] > 33:
-                    for score, name in allResults[0:args.k_best]:
-                        bestAuxKp.append(int(Path(name).stem.split('_')[1]))
-                else:
-                    bestAuxKp = [-1]
-                bestPicturesKp.append(bestAuxKp)
-            resultKpMatchPickle.append(bestPicturesKp)
-        
-        print('Best matches',bestMatches)
-        end = timer()
-
-        gtRes = None
-        if os.path.exists(args.gt_results):
-            with open(args.gt_results, 'rb') as reader:
-                gtRes = pickle.load(reader)
-            flattened = [np.array(sublist).flatten() for sublist in resultKpMatchPickle]
-            resultScore = mapk(gtRes, flattened, args.k_best)
-            print(f'KeyPoint matching average precision for k = {args.k_best} is {resultScore:.4f} in {end - start}.')
-            with open(f'{args.keypoint_detection}_result.pkl', 'wb') as handle:
-                pickle.dump(resultKpMatchPickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
     else:
         #---------PREPARING DDBB DATA----------
         #Loading DDBB images
+        ddbb_images = {}
         if args.plot_result:
             print('Loading all images for ploting...')
             ddbb_images = loadAllImages(args.path)
         
         #Loading or computing COLOR histograms for DDBB
         colorHistogramsFile = f'ddbb_color_histograms_{args.color_space}_segments{args.split}.pkl'
-        if os.path.exists(colorHistogramsFile):
-            #Load histograms for DB, they are always the same for a space color and split level
-            with open(colorHistogramsFile, 'rb') as reader:
-                print('Load existing color histograms...')
-                ddbb_color_histograms = pickle.load(reader)
-                print('Done loading color histograms.')
-        else:
-            ddbb_color_histograms = getColorHistograms(args.path, args.color_space, args.split)
-            #Save histograms for next time
-            with open(colorHistogramsFile, 'wb') as handle:
-                pickle.dump(ddbb_color_histograms, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        ddbb_color_histograms = loadColorHistograms(colorHistogramsFile, args.path, args.color_space, args.split)
+        
 
         #Loading or computing TEXTURE histograms for DDBB
         textureHistogramsFile = f'ddbb_texture_histograms_segments{args.split}.pkl'
-        if os.path.exists(textureHistogramsFile):
-            #Load histograms for DB
-            with open(textureHistogramsFile, 'rb') as reader:
-                print('Load existing texture histograms...')
-                ddbb_texture_histograms = pickle.load(reader)
-                print('Done loading texture histograms.')
-        else:
-            ddbb_texture_histograms = getTextureHistograms(args.path, args.split)
-            #Save histograms for next time
-            with open(textureHistogramsFile, 'wb') as handle:
-                pickle.dump(ddbb_texture_histograms, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        ddbb_texture_histograms = loadTextureHistograms(textureHistogramsFile, args.path, args.split)
+
+        #Loading or computing Keypoint descriptors for DDBB
+        descriptorFile = f'ddbb_{args.keypoint_detection}_descriptor.pkl'
+        ddbb_descriptors = loadImageDescriptors(descriptorFile, args.path, args.keypoint_detection)
         #--------------------------------------
 
         #Read the text files for data base
@@ -220,12 +118,14 @@ def main():
             resultPickleTexture = []
             resultPickleText = []
             resultPickleCombined = []
+            resultKpMatchPickle = []
             textsPickle = []
             TextBoxPickle = []
             precisionList = []
             recallList = []
             F1List = []
-            
+            descriptor = getDescriptor(args.keypoint_detection)
+
             
             for i, inputImage in enumerate(images):
                 print('Processing image: ', filenames[i])
@@ -234,62 +134,70 @@ def main():
                 # Find mask if applicable
                 backgroundMask = None
                 precision, recall, F1_measure = -1, -1, -1
+                croppedImages = [queryImage]
                 if args.mask:
-                    backgroundMask, precision, recall, F1_measure = backgroundRemoval(queryImage, filename)
-                    # backgroundMask = cv2.imread(filename.replace('jpg','png'), cv2.IMREAD_GRAYSCALE)
+                    # backgroundMask, precision, recall, F1_measure = backgroundRemoval(queryImage, filename)
+                    backgroundMask = cv2.imread(filename.replace('jpg','png'), cv2.IMREAD_GRAYSCALE)
+
+                    croppedImages = []
+                    contours, hierarchy = cv2.findContours(backgroundMask,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
+
+                    for cnt in contours:
+                        rect = cv2.minAreaRect(cnt)
+                        croppedImages.append(crop_minAreaRect(queryImage, rect))
 
                 #Find text boxes and their masks if needed
                 masks = []
                 textBoxMasks = []
                 textImages = []
-                start, end = [], []
 
-                if backgroundMask is None:
-                    if args.extract_text_box:
-                        textImage, textBoxMask, box = getTextAlone(queryImage)
+                masks = []
+                if args.extract_text_box:
+                    for crop in croppedImages:
+                        textImage, textBoxMask, box = getTextAlone(crop)
                         TextBoxPickle.append([box])
                         textBoxMasks.append(textBoxMask)
                         textImages.append(textImage)
                         backgroundMask = cv2.bitwise_not(textBoxMask)
                         masks.append(backgroundMask)
-                else:
-                    elems, start, end = findElementsInMask(backgroundMask)
-                    if elems > 1:
-                        boxes = []
-                        for num in range(elems):
-                            auxMask = np.zeros(backgroundMask.shape, dtype="uint8")
-                            auxMask[start[num][0]:end[num][0],start[num][1]:end[num][1]] = 255
-
-                            if args.extract_text_box:
-                                res = cv2.bitwise_and(queryImage,queryImage,mask = auxMask)
-                                textImage, textBoxMask, box = getTextAlone(res)
-                                boxes.append(box)
-                                textBoxMasks.append(textBoxMask)
-                                textImages.append(textImage)
-                                auxMask = cv2.bitwise_and(auxMask,auxMask,mask = cv2.bitwise_not(textBoxMask))
-
-                            masks.append(auxMask)
-                        TextBoxPickle.append(boxes)
-                    else:
-                        if args.extract_text_box:
-                            res = cv2.bitwise_and(queryImage,queryImage,mask = backgroundMask)
-                            textImage, textMask, box = getTextAlone(res)
-                            textImages.append(textImage)
-                            TextBoxPickle.append([box])
-                            auxMask = cv2.bitwise_and(backgroundMask,backgroundMask,mask = cv2.bitwise_not(textMask))
-
-                            masks.append(auxMask)
-                        else:
-                            masks.append(backgroundMask)
 
                 #-------------------------------------------
 
+                queryHistColor = []
+                queryTextureHist = []
+                allResultsDescriptors = {}
+                if len(croppedImages) > 2:
+                    print('Muchos crops')
+                # plt.imshow(queryImage)
+                for ind, img in enumerate(croppedImages):
+                    # plt.imshow(img)
+                    # plt.show()
+                    queryHistColor.append(getColorHistogramForQueryImage(img, args.color_space, [masks[ind]], [], [], args.split)[0])
+                    queryTextureHist.append(getTextureHistogramForQueryImage(img, [masks[ind]], [], [], args.split)[0])
+
+                    imgFinal = img
+                    if args.extract_text_box:
+                        pixels = np.sum(masks[ind]) // 255
+                        if pixels > 0.2 * (masks[ind].shape[0] * masks[ind].shape[1]):
+                            masks[ind] = np.zeros((img.shape[0], img.shape[1]), dtype="uint8")
+                            start = img.shape[0] // 4
+                            start2 = img.shape[1] // 10
+                            masks[ind][start:(img.shape[0]-start), :] = 255
+                            imgFinal = cv2.bitwise_and(img,img,mask = (masks[ind]))
+                        else:
+                            imgFinal = cv2.bitwise_and(img,img,mask = cv2.bitwise_not(masks[ind]))
+                    
+                    resized = imgFinal
+                    if imgFinal.shape[0] > 512 and imgFinal.shape[1] > 512:
+                        resized = cv2.resize(imgFinal, (512, 512), interpolation = cv2.INTER_AREA)
+                    queryKp, queryDescp = descriptor.detectAndCompute(resized, None)
+                    allResultsDescriptors[ind] = findBestMatches(resized, queryKp, queryDescp, ddbb_descriptors, ddbb_images, args.keypoint_detection)
+
+
                 #Comparing COLOR histograms
-                queryHistColor = getColorHistogramForQueryImage(queryImage, args.color_space, masks, start, end, args.split)
                 allResultsColor = compareColorHistograms(queryHistColor, ddbb_color_histograms)
 
                 #Comparing TEXTURE histograms
-                queryTextureHist = getTextureHistogramForQueryImage(queryImage, masks, start, end, args.split)
                 allResultsTexture = compareTextureHistograms(queryTextureHist, ddbb_texture_histograms)
 
                 # Comparing TEXT
@@ -311,9 +219,10 @@ def main():
                 bestPicturesTexture, bestAuxTexture = [], []
                 bestPicturesText, bestAuxText = [], []
                 bestPicturesCombined, bestAuxCombined = [], []
+                bestPicturesDescriptors, bestAuxDescriptors = [], []
 
                 #Inistilise data frame
-                all_result_df = pd.DataFrame(columns=["Image", "Color", "Texture", "Text"])
+                all_result_df = pd.DataFrame(columns=["Image", "Color", "Texture", "Text", "Matches"])
 
                 for key, results in allResultsColor.items():
                     # Creates DataFrame
@@ -335,6 +244,21 @@ def main():
 
                     for score, name in allResultsTexture[key]:
                         all_result_df.loc[all_result_df["Image"] == name, "Texture"] = score
+                    
+                    
+                    # Add the best k pictures to the array that is going to be exported as pickle
+                    if allResultsDescriptors[key][0][0] < 33:
+                        bestAuxDescriptors = [-1]
+                    else:
+                        for score, name in allResultsDescriptors[key][0:args.k_best]:
+                            bestAuxDescriptors.append(int(Path(name).stem.split('_')[1]))
+                    bestPicturesDescriptors.append(bestAuxTexture)
+
+                    for score, name in allResultsDescriptors[key]:
+                        if score < 33:
+                            all_result_df.loc[all_result_df["Image"] == name, "Matches"] = 0
+                        else:
+                            all_result_df.loc[all_result_df["Image"] == name, "Matches"] = score
 
                     if args.extract_text_box and bool(allResultsText):
                         for score, name in allResultsText[key][0:args.k_best]:
@@ -352,11 +276,12 @@ def main():
                     # Normalise the final score with min-max normalization
                     all_result_df["Color"]=(all_result_df["Color"]-all_result_df["Color"].min())/(all_result_df["Color"].max()-all_result_df["Color"].min())
                     all_result_df["Texture"]=(all_result_df["Texture"]-all_result_df["Texture"].min())/(all_result_df["Texture"].max()-all_result_df["Texture"].min())
+                    all_result_df["Matches"]=(all_result_df["Matches"]-all_result_df["Matches"].min())/(all_result_df["Matches"].max()-all_result_df["Matches"].min())
                     # all_result_df["Text"]=(all_result_df["Text"]-all_result_df["Text"].min())/(all_result_df["Text"].max()-all_result_df["Text"].min())
 
                     weights = args.weights
                     all_result_df["Combined"] = 0
-                    all_result_df["Combined"] = weights[0] * all_result_df["Color"] + weights[1] * all_result_df["Texture"] + weights[2] * all_result_df["Text"]
+                    all_result_df["Combined"] = weights[0] * all_result_df["Color"] + weights[1] * all_result_df["Texture"] + weights[2] * all_result_df["Text"] + weights[3] * all_result_df["Matches"]
 
                     combinedResults = list(zip(all_result_df["Combined"].tolist(), all_result_df["Image"].tolist()))
                     combinedResults.sort(reverse=True)
@@ -368,6 +293,7 @@ def main():
                 #pickel the k best results in lists of list
                 resultPickleColor.append(bestPicturesColor)
                 resultPickleTexture.append(bestPicturesTexture)
+                resultKpMatchPickle.append(bestPicturesDescriptors)
                 if args.extract_text_box:
                     resultPickleText.append(bestPicturesText)
                 resultPickleCombined.append(bestPicturesCombined)
@@ -402,22 +328,26 @@ def main():
                 #COLOR
                 flattened = [np.array(sublist).flatten() for sublist in resultPickleColor]
                 resultScore = mapk(gtRes, flattened, args.k_best)
-                print(f'Color average precision in Hellinger for k = {args.k_best} is {resultScore}.')
+                print(f'Color average precision in Hellinger for k = {args.k_best} is {resultScore:.4f}.')
                 #TEXTURE
                 flattened = [np.array(sublist).flatten() for sublist in resultPickleTexture]
                 resultScore = mapk(gtRes, flattened, args.k_best)
-                print(f'Texture average precision in Hellinger for k = {args.k_best} is {resultScore}.')
+                print(f'Texture average precision in Hellinger for k = {args.k_best} is {resultScore:.4f}.')
                 #TEXT
                 if args.extract_text_box:
                     flattened = [np.array(sublist).flatten() for sublist in resultPickleText]
                     resultScore = mapk(gtRes, flattened, args.k_best)
-                    print(f'Text average precision in Hellinger for k = {args.k_best} is {resultScore}.')
+                    print(f'Text average precision in Hellinger for k = {args.k_best} is {resultScore:.4f}.')
                     with open("results.txt", 'w') as output:
                         for row in textsPickle:
                             output.write(str(row) + '\n')
                     print(TextBoxPickle)
                     with open('text_boxes' + '.pkl', 'wb') as handle:
                         pickle.dump(TextBoxPickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                #Descriptors
+                flattened = [np.array(sublist).flatten() for sublist in resultKpMatchPickle]
+                resultScore = mapk(gtRes, flattened, args.k_best)
+                print(f'KeyPoint matching average precision for k = {args.k_best} is {resultScore:.4f}.')
                 #Combined
                 flattened = [np.array(sublist).flatten() for sublist in resultPickleCombined]
                 resultScore = mapk(gtRes, flattened, args.k_best)
