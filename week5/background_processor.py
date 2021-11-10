@@ -175,9 +175,13 @@ def crop_minAreaRect(img, rect):
     # get the parameter of the small rectangle
     center = rect[0]
     size = rect[1]
-    angle = rect[2]
-    if abs(angle) > 45.0:
-        angle = angle + 90.0
+    if abs(rect[2]) == 90 or rect[2] == 0:
+        angle = 0
+    elif rect[2] < 45:
+        angle = 180 - rect[2]
+    else:
+        angle = 90 - rect[2]
+
     center, size = tuple(map(int, center)), tuple(map(int, size))
 
     # get row and col num in img
