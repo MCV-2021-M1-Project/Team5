@@ -101,8 +101,6 @@ def main():
             bestPicturesKp = []
             for i, img in enumerate(imagesCroppped):
                 print('Processing crop number ', i + 1)
-                # plt.imshow(img, cmap='gray')
-                # plt.show()
                 imgFinal = img
                 if args.extract_text_box:
                     textImage, textBoxMask, box = EricText(imagesCropppedColored[i])
@@ -115,12 +113,8 @@ def main():
                         imgFinal = cv2.bitwise_and(img,img,mask = (textBoxMask))
                     else:
                         imgFinal = cv2.bitwise_and(img,img,mask = cv2.bitwise_not(textBoxMask))
-                    # plt.imshow(imgFinal, cmap='gray')
-                    # plt.title(filename + '_' + str(i))
-                    # plt.show()
                 descriptor = getDescriptor(args.keypoint_detection)
-                # plt.imshow(imgFinal, cmap='gray')
-                # plt.show()
+
                 resized = imgFinal
                 if imgFinal.shape[0] > 512 and imgFinal.shape[1] > 512:
                     resized = cv2.resize(imgFinal, (512, 512), interpolation = cv2.INTER_AREA)

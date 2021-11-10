@@ -8,9 +8,10 @@ import textdistance
 import pickle
 from pathlib import Path
 import numpy as np
+from matplotlib import pyplot as plt
 
 #Open query image folder
-query_image_folder = "/Users/brian/Desktop/Computer Vision/M1/Project/qsd1_w5"
+query_image_folder = "../../datasets/testSet"
 filenames = [img for img in glob.glob(query_image_folder + "/*"+ ".jpg")]
 filenames.sort()
 
@@ -44,8 +45,12 @@ for i, inputImage in enumerate(images):
     box = np.int0(box)
     print("Rotation: " + str(rect[2]))
     cv2.drawContours(queryImage, [box], 0, (0, 0, 255), 6)
-    cv2.imshow("", queryImage)
-    cv2.waitKey()
+    plt.imshow(queryImage)
+    plt.show()
+
+    crop = background_processor.crop_minAreaRect(queryImage, rect)
+    plt.imshow(crop)
+    plt.show()
 
 #     elems, start, end = background_processor.findElementsInMask(backgroundMask)
 #
