@@ -124,6 +124,7 @@ def main():
             precisionList = []
             recallList = []
             F1List = []
+            framePickle = []
             descriptor = getDescriptor(args.keypoint_detection)
 
             
@@ -140,11 +141,24 @@ def main():
                     backgroundMask = cv2.imread(filename.replace('jpg','png'), cv2.IMREAD_GRAYSCALE)
 
                     croppedImages = []
+                    frames = []
                     contours, hierarchy = cv2.findContours(backgroundMask,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
 
                     for cnt in contours:
                         rect = cv2.minAreaRect(cnt)
                         croppedImages.append(crop_minAreaRect(queryImage, rect))
+                        box = cv2.boxPoints(rect)
+                        box = np.int0(box)
+                        if abs(rect[2]) == 90 or rect[2] == 0:
+                            angle = 0
+                        elif rect[2] < 45:
+                            angle = 180 - rect[2]
+                        else:
+                            angle = 90 - rect[2]
+                        frame = [angle, box]
+                        frames.append(frame)
+
+                framePickle.append(frames)
 
                 #Find text boxes and their masks if needed
                 masks = []
@@ -344,7 +358,6 @@ def main():
                     with open("results.txt", 'w') as output:
                         for row in textsPickle:
                             output.write(str(row) + '\n')
-                    print(TextBoxPickle)
                     with open('text_boxes' + '.pkl', 'wb') as handle:
                         pickle.dump(TextBoxPickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
                 #Descriptors
@@ -357,6 +370,9 @@ def main():
                 print(f'Combined average precision for k = {args.k_best} is {resultScore}.')
             with open('Hellinger_' + args.color_space + '_segments' + str(args.split) + '.pkl', 'wb') as handle:
                 pickle.dump(resultPickleCombined, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+            with open('frames' + '.pkl', 'wb') as handle:
+                pickle.dump(framePickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
         #--------------------------------------
 
 if __name__ == "__main__":
