@@ -15,7 +15,8 @@ from histogram_processing import loadColorHistograms, compareColorHistograms, ge
 from texture_histograms import loadTextureHistograms, compareTextureHistograms, getTextureHistogramForQueryImage
 from text_processing import getImagesGtText, compareText, imageToText
 from extractTextBox import getTextAlone, EricText
-from background_processor import backgroundRemoval, findElementsInMask, crop_minAreaRect
+from rotation import findAngle, rotate
+from background_processor import backgroundFill, backgroundRemoval, findElementsInMask, crop_minAreaRect
 from image_descriptors import loadImageDescriptors, getDescriptor, findBestMatches
 
 
@@ -136,15 +137,34 @@ def main():
                 precision, recall, F1_measure = -1, -1, -1
                 croppedImages = [queryImage]
                 if args.mask:
-                    # backgroundMask, precision, recall, F1_measure = backgroundRemoval(queryImage, filename)
-                    backgroundMask = cv2.imread(filename.replace('jpg','png'), cv2.IMREAD_GRAYSCALE)
+                    maskFill = backgroundFill(queryImage)
+                    angle = findAngle(maskFill)
+                    rotatedImage = rotate(queryImage, angle)
+                    rotatedMaskFill = rotate(maskFill, angle)
+                    
+                    plt.imshow(cv2.cvtColor(rotatedImage, cv2.COLOR_BGR2RGB))
+                    plt.axis("off")
+                    plt.title("rotated")
+                    plt.show()
+                    
+                    plt.imshow(cv2.cvtColor(rotatedMaskFill, cv2.COLOR_BGR2RGB))
+                    plt.axis("off")
+                    plt.title("rotated mask fill")
+                    plt.show()
+                    
+                    backgroundMask, precision, recall, F1_measure = backgroundRemoval(rotatedMaskFill, filename)
+                    
+                    plt.imshow(cv2.cvtColor(backgroundMask, cv2.COLOR_GRAY2RGB))
+                    plt.axis("off")
+                    plt.title("rotatedMask")
+                    plt.show()
 
                     croppedImages = []
                     contours, hierarchy = cv2.findContours(backgroundMask,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
 
                     for cnt in contours:
                         rect = cv2.minAreaRect(cnt)
-                        croppedImages.append(crop_minAreaRect(queryImage, rect))
+                        croppedImages.append(crop_minAreaRect(rotatedImage, rect))
 
                 #Find text boxes and their masks if needed
                 masks = []
