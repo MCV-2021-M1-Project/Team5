@@ -125,6 +125,7 @@ def main():
             precisionList = []
             recallList = []
             F1List = []
+            IoUList = []
             framePickle = []
             descriptor = getDescriptor(args.keypoint_detection)
             bestNumberOfMatches = []
@@ -135,7 +136,7 @@ def main():
                 queryImage = denoinseImage(inputImage)
                 # Find mask if applicable
                 backgroundMask = None
-                precision, recall, F1_measure = -1, -1, -1
+                precision, recall, F1_measure, IoU = -1, -1, -1, -1
                 croppedImages = [queryImage]
                 if args.mask:
                     maskFill = backgroundFill(queryImage)
@@ -153,8 +154,10 @@ def main():
                     # plt.title("rotated mask fill")
                     # plt.show()
                     
-                    backgroundMask, precision, recall, F1_measure = backgroundRemoval(rotatedMaskFill, filename)
-                    
+                    backgroundMask, precision, recall, F1_measure, IoU = backgroundRemoval(rotatedMaskFill, filename)
+
+                    print("IoU: ",IoU)
+
                     # plt.imshow(cv2.cvtColor(backgroundMask, cv2.COLOR_GRAY2RGB))
                     # plt.axis("off")
                     # plt.title("rotatedMask")
@@ -344,6 +347,7 @@ def main():
                 precisionList.append(precision)
                 recallList.append(recall)
                 F1List.append(F1_measure)
+                IoUList.append(IoU)
 
                 if args.plot_result:
                     # change the color space to RGB to plot the image later
@@ -359,6 +363,8 @@ def main():
                 print(f'Average recall of masks is {avgRecall}.')
                 avgF1 = sum(F1List)/len(F1List)
                 print(f'Average F1-measure of masks is {avgF1}.')
+                avgIoU = sum(IoUList) / len(IoUList)
+                print(f'Average IoU of masks is {avgIoU}.')
 
             #Result export (Color)
             gtRes = None

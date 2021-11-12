@@ -24,6 +24,7 @@ def evaluateMask(gtMask, computedMask):
     truePositive = np.count_nonzero(intersect_matrices(gtMask, computedMask))
     falseNegative = np.count_nonzero(intersect_matrices(gtMask, cv2.bitwise_not(computedMask)))
     falsePositive = np.count_nonzero(intersect_matrices(cv2.bitwise_not(gtMask), computedMask))
+    union = np.count_nonzero(cv2.bitwise_or(gtMask, computedMask))
     # trueNegative = np.count_nonzero(intersect_matrices(cv2.bitwise_not(gtMask), cv2.bitwise_not(computedMask)))
 
     if truePositive + falsePositive != 0:
@@ -39,7 +40,12 @@ def evaluateMask(gtMask, computedMask):
         #print('F1-measure: ' + '{:.2f}'.format(F1_measure))
     else:
         F1_measure = 0
-    return precision, recall, F1_measure
+
+    if union is not 0:
+        IoU = truePositive / union
+    else:
+        IoU = 0
+    return precision, recall, F1_measure, IoU
 
 def sorting_func(lst):
   return np.linalg.norm(lst[0])
@@ -165,11 +171,11 @@ def backgroundRemoval(maskFill, filename):
     if os.path.exists(annotationPath):
         annotation = cv2.imread(annotationPath)
         annotation = cv2.cvtColor(annotation, cv2.COLOR_BGR2GRAY)
-        precision, recall, F1_measure = evaluateMask(annotation, maskFinal)
+        precision, recall, F1_measure, IoU = evaluateMask(annotation, maskFinal)
         
-        return maskFinal, precision, recall, F1_measure
+        return maskFinal, precision, recall, F1_measure, IoU
     else:
-        return maskFinal, -1, -1, -1
+        return maskFinal, -1, -1, -1, -1
 
 
 def crop_minAreaRect(img, rect):
