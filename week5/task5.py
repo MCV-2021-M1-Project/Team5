@@ -127,7 +127,7 @@ def main():
             F1List = []
             framePickle = []
             descriptor = getDescriptor(args.keypoint_detection)
-
+            bestNumberOfMatches = []
             
             for i, inputImage in enumerate(images):
                 print('Processing image: ', filenames[i])
@@ -143,22 +143,22 @@ def main():
                     rotatedImage = rotate(queryImage, angle)
                     rotatedMaskFill = rotate(maskFill, angle)
                     
-                    plt.imshow(cv2.cvtColor(rotatedImage, cv2.COLOR_BGR2RGB))
-                    plt.axis("off")
-                    plt.title("rotated")
-                    plt.show()
+                    # plt.imshow(cv2.cvtColor(rotatedImage, cv2.COLOR_BGR2RGB))
+                    # plt.axis("off")
+                    # plt.title("rotated")
+                    # plt.show()
                     
-                    plt.imshow(cv2.cvtColor(rotatedMaskFill, cv2.COLOR_BGR2RGB))
-                    plt.axis("off")
-                    plt.title("rotated mask fill")
-                    plt.show()
+                    # plt.imshow(cv2.cvtColor(rotatedMaskFill, cv2.COLOR_BGR2RGB))
+                    # plt.axis("off")
+                    # plt.title("rotated mask fill")
+                    # plt.show()
                     
                     backgroundMask, precision, recall, F1_measure = backgroundRemoval(rotatedMaskFill, filename)
                     
-                    plt.imshow(cv2.cvtColor(backgroundMask, cv2.COLOR_GRAY2RGB))
-                    plt.axis("off")
-                    plt.title("rotatedMask")
-                    plt.show()
+                    # plt.imshow(cv2.cvtColor(backgroundMask, cv2.COLOR_GRAY2RGB))
+                    # plt.axis("off")
+                    # plt.title("rotatedMask")
+                    # plt.show()
 
                     croppedImages = []
                     frames = []
@@ -229,6 +229,7 @@ def main():
                         resized = cv2.resize(imgFinal, (512, 512), interpolation = cv2.INTER_AREA)
                     queryKp, queryDescp = descriptor.detectAndCompute(resized, None)
                     allResultsDescriptors[ind] = findBestMatches(resized, queryKp, queryDescp, ddbb_descriptors, ddbb_images, args.keypoint_detection)
+                    bestNumberOfMatches.append(allResultsDescriptors[ind][0][0])
 
 
                 #Comparing COLOR histograms
@@ -349,6 +350,7 @@ def main():
                     queryImageRGB = cv2.cvtColor(queryImage, cv2.COLOR_BGR2RGB)
                     plotResults(allResultsColor, args.k_best, ddbb_images, queryImageRGB)
 
+            print('Best number of matches for each paint: ', bestNumberOfMatches)
             # Mask evaluation results
             if args.mask and os.path.exists(args.gt_results):
                 avgPrecision = sum(precisionList)/len(precisionList)

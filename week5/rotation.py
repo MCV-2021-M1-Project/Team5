@@ -8,9 +8,9 @@ from matplotlib import pyplot as plt
 def findAngle(maskFill):     
     contours = cv2.Canny(maskFill,20,400)
     
-    plt.imshow(cv2.cvtColor(contours, cv2.COLOR_GRAY2RGB))
-    plt.axis("off")
-    plt.show()
+    # plt.imshow(cv2.cvtColor(contours, cv2.COLOR_GRAY2RGB))
+    # plt.axis("off")
+    # plt.show()
     
     lines = cv2.HoughLinesP(contours, 1, np.pi/180, 50, minLineLength = 150, maxLineGap = 20)
     angles = []
@@ -27,7 +27,7 @@ def findAngle(maskFill):
                 angle -= 90
         angles.append(angle)
         
-    print(statistics.median(angles))
+    # print(statistics.median(angles))
     return statistics.median(angles)
 
     # plt.imshow(cv2.cvtColor(maskFill, cv2.COLOR_BGR2RGB))

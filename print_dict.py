@@ -10,7 +10,7 @@ import pickle
 if __name__ == "__main__":
 
     # read args
-    dict_name = '../datasets/qsd1_w4/gt_corresps.pkl'
+    dict_name = '../datasets/qsd1_w5/gt_corresps.pkl'
     # dict_name = './week4/qsd1_w4/gt_corresps.pkl'
 
 
@@ -18,11 +18,12 @@ if __name__ == "__main__":
         dict = pickle.load(fd)
 
     print (dict)
-    # newDict = []
+    # newDict = 
     # for box in dict:
-    #   newDict.append([box])
+    #   newDict.append(box)
     # print (newDict)
 
     # with open('text_boxes_fixed.pkl', 'wb') as fd:
     #     pickle.dump(newDict, fd, protocol=pickle.HIGHEST_PROTOCOL)
     print ('Dictionary contains {} elements'.format(len(dict)))
+

@@ -196,7 +196,7 @@ def crop_minAreaRect(img, rect):
         size = tuple(reversed(size))
 
     img_crop = cv2.getRectSubPix(img, size, center)
-    plt.title("cropped")
-    plt.imshow(img_crop)
-    plt.show()
+    # plt.title("cropped")
+    # plt.imshow(img_crop)
+    # plt.show()
     return img_crop
