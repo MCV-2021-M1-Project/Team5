@@ -1,9 +1,11 @@
 import cv2
 import glob
+import math
+import statistics
 import extractTextBox
 import text_processing
-import denoise_image
-import background_processor
+from denoise_image import denoinseImage
+from background_processor import backgroundRemoval, cleanerV, cleanerH, intersect_matrices
 import textdistance
 import pickle
 from pathlib import Path
@@ -11,12 +13,9 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 #Open query image folder
-query_image_folder = "../../datasets/testSet"
+query_image_folder = "../../Datasets/qsd1_w5"
 filenames = [img for img in glob.glob(query_image_folder + "/*"+ ".jpg")]
 filenames.sort()
-
-# textnames = [text for text in glob.glob(query_image_folder + "/*" + ".txt")]
-# textnames.sort()
 
 #Load images to a list
 images = []
@@ -33,127 +32,68 @@ for i, inputImage in enumerate(images):
     print('Processing image: ', filenames[i])
     filename = filenames[i]
 
-    queryImage = denoise_image.denoinseImage(inputImage)
+    queryImage = denoinseImage(inputImage)
+    
+    #Converting image to Greyscale
+    queryImageGray = cv2.cvtColor(queryImage, cv2.COLOR_BGR2GRAY)
+    
+    #Draw contours
+    contours = cv2.Canny(queryImageGray,50,160)
+    
+    plt.imshow(cv2.cvtColor(contours, cv2.COLOR_GRAY2RGB))
+    plt.axis("off")
+    plt.show()
+    
+    maskCleanV, maskCleanH = np.copy(contours), np.copy(contours)
+    maskCleanV, maskCleanH = cleanerV(maskCleanV), cleanerH(maskCleanH)
+    
+    maskClean = intersect_matrices(maskCleanV, maskCleanH)
+    
+    plt.imshow(cv2.cvtColor(maskClean, cv2.COLOR_GRAY2RGB))
+    plt.axis("off")
+    plt.show()
+    
+    contours = cv2.Canny(maskClean,20,400)
+    
+    plt.imshow(cv2.cvtColor(contours, cv2.COLOR_GRAY2RGB))
+    plt.axis("off")
+    plt.show()
+    
+    lines = cv2.HoughLinesP(contours, 1, np.pi/180, 50, minLineLength = 150, maxLineGap = 20)
+    angles = []
+    for line in lines:
+        x1,y1,x2,y2 = line[0]
+        cv2.line(queryImage,(x1,y1),(x2,y2),(0,0,255),10)
+        
+        angle = math.atan2(y2-y1, x2-x1) * (180.0 / math.pi)
+        if angle < 0:
+            if angle < -45:
+                angle += 90
+        else:
+            if angle > 45:
+                angle -= 90
+        angles.append(angle)
+        
+    print(statistics.median(angles))
 
-    backgroundMask, precision, recall, F1_measure = background_processor.backgroundRemoval(queryImage, filename)
-    print("F1_measure: " + str(F1_measure))
-
-    contours, hierarchy = cv2.findContours(backgroundMask,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
-    cnt = contours[0]
-    rect = cv2.minAreaRect(cnt)
-    box = cv2.boxPoints(rect)
-    box = np.int0(box)
-    print("Rotation: " + str(rect[2]))
-    cv2.drawContours(queryImage, [box], 0, (0, 0, 255), 6)
-    plt.imshow(queryImage)
+    plt.imshow(cv2.cvtColor(queryImage, cv2.COLOR_BGR2RGB))
+    plt.axis("off")
     plt.show()
 
-    crop = background_processor.crop_minAreaRect(queryImage, rect)
-    plt.imshow(crop)
-    plt.show()
 
-#     elems, start, end = background_processor.findElementsInMask(backgroundMask)
-#
-#     texts = []
-#
-#     if elems > 1:
-#         boxes = []
-#         # with open(textnames[i], encoding="latin-1") as file:
-#         #     lines = file.readlines()
-#         for num in range(elems):
-#             auxMask = np.zeros(backgroundMask.shape, dtype="uint8")
-#             auxMask[start[num][0]:end[num][0],start[num][1]:end[num][1]] = 255
-#             # cv2.imshow("Background Mask", auxMask)
-#
-#             res = cv2.bitwise_and(queryImage,queryImage,mask = auxMask)
-#             # cv2.imshow("Background Masked", res)
-#
-#             # contour_text, contour_mask, _ = extractTextBox.EricText(res)
-#             blackhat_text, blackhat_mask, box = extractTextBox.getTextAlone(res)
-#
-#             # cv2.imshow("contour_text", contour_text)
-#             # cv2.imshow("blackhat_text", blackhat_text)
-#             # cv2.waitKey(0)
-#
-#             # mask = cv2.bitwise_and(contour_mask, blackhat_mask, mask=auxMask)
-#             #
-#             # mask, x, y, w, h = extractTextBox.maskToRect(queryImage,mask)
-#             # if w > 0 and h > 0:
-#             #     textImage = queryImage[y:y + h, x:x + w]
-#             # else:
-#             #     textImage = queryImage
-#             # box = extractTextBox.convertBox(x, y, w, h)
-#
-#             # textImage, textBoxMask, box = extractTextBox.getTextAlone(res)
-#             # extractedtext = text_processing.imageToText(textImage)
-#             # texts.append(extractedtext)
-#
-#             # if lines[num]:
-#             #     painter_name, painting_name = text_processing.readTextFromFile(lines[num])
-#             # else:
-#             #     painter_name = ""
-#             #     painting_name = ""
-#
-#             # distance = textdistance.levenshtein.normalized_similarity(extractedtext, painter_name)
-#             # distance1 = textdistance.levenshtein.normalized_similarity(extractedtext, painting_name)
-#             # distance = max(distance, distance1)
-#             # print(distance)
-#             # distance_list.append(distance)
-#
-#             # cv2.imshow("TextImage", textImage)
-#             # cv2.imshow("textBoxMask", textBoxMask)
-#
-#             boxes.append(box)
-#             # cv2.waitKey(0)
-#         TextBoxPickle.append(boxes)
-#         # print(texts)
-#     else:
-#         # textImage, textMask, box = extractTextBox.getTextAlone(queryImage)
-#         auxMask = np.zeros(backgroundMask.shape, dtype="uint8")
-#         auxMask[start[0][0]:end[0][0], start[0][1]:end[0][1]] = 255
-#
-#         res = cv2.bitwise_and(queryImage, queryImage, mask=auxMask)
-#
-#         # contour_text, contour_mask, _ = extractTextBox.EricText(res)
-#         blackhat_text, blackhat_mask, box = extractTextBox.getTextAlone(res)
-#
-#         # cv2.imshow("contour_text", contour_text)
-#         # cv2.imshow("blackhat_text", blackhat_text)
-#         # cv2.waitKey(0)
-#
-#         # mask = cv2.bitwise_and(contour_mask, blackhat_mask, mask=auxMask)
-#         # mask, x, y, w, h = extractTextBox.maskToRect(queryImage, mask)
-#         # if w > 0 and h > 0:
-#         #     textImage = queryImage[y:y + h, x:x + w]
-#         # else:
-#         #     textImage = queryImage
-#         # box = extractTextBox.convertBox(x, y, w, h)
-#
-#         # extractedtext = text_processing.imageToText(textImage)
-#
-#
-#         # with open(textnames[i], encoding="latin-1") as file:
-#         #     lines = file.readlines()
-#         #     painter_name, painting_name = text_processing.readTextFromFile(lines[0])
-#
-#         # distance = textdistance.levenshtein.normalized_similarity(extractedtext, painter_name)
-#         # distance1 = textdistance.levenshtein.normalized_similarity(extractedtext, painting_name)
-#         # distance = max(distance, distance1)
-#         #
-#         # print(distance)
-#         # print(extractedtext)
-#         # texts.append(extractedtext)
-#         # print(texts)
-#         # cv2.imshow("TextImage", textImage)
-#         # cv2.imshow("textBoxMask", textMask)
-#         TextBoxPickle.append([box])
-#
-#     # with open((Path(filename).stem + '.txt'), 'w') as output:
-#     #     for text in texts:
-#     #         output.write(str(text) + '\n')
-#
-# with open('text_boxes' + '.pkl', 'wb') as handle:
-#     pickle.dump(TextBoxPickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
-#     print(TextBoxPickle)
+    # backgroundMask, precision, recall, F1_measure = background_processor.backgroundRemoval(queryImage, filename)
+    # print("F1_measure: " + str(F1_measure))
 
-# print(np.average(distance_list))
+    # contours, hierarchy = cv2.findContours(backgroundMask,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
+    # cnt = contours[0]
+    # rect = cv2.minAreaRect(cnt)
+    # box = cv2.boxPoints(rect)
+    # box = np.int0(box)
+    # print("Rotation: " + str(rect[2]))
+    # cv2.drawContours(queryImage, [box], 0, (0, 0, 255), 6)
+    # plt.imshow(queryImage)
+    # plt.show()
+
+    # crop = background_processor.crop_minAreaRect(queryImage, rect)
+    # plt.imshow(crop)
+    # plt.show()
