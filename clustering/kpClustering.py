@@ -14,7 +14,7 @@ else:
     exit(-1)
 
 ddbb_imgs = utils.loadAllImages('../../datasets/BBDD')
-queryImg = cv2.imread('lena.png')
+queryImg = cv2.imread('shadow.png')
 
 descriptor = cv2.ORB_create()
 queryKp, queryDescp = descriptor.detectAndCompute(queryImg, None)
@@ -27,5 +27,5 @@ for name, dbDescp in ddbb_descriptors.items():
     results.append((res, name))
 
 ordered = utils.orderTuples(results, True)
-
+print(ordered[0:5])
 utils.plotResults(ordered, ddbb_imgs)
