@@ -196,6 +196,14 @@ def crop_minAreaRect(img, rect):
     center = rect[0]
     size = rect[1]
 
+    #if abs(rect[2]) == 90 or rect[2] == 0:
+     #   angle = 0
+    #elif abs(rect[2]) < 45:
+     #   angle = rect[2]
+    #else:
+     #   angle = 90 + rect[2]
+
+
     center, size = tuple(map(int, center)), tuple(map(int, size))
 
     # Ignoring rotation of minareaRect function

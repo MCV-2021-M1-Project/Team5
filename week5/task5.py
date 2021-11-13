@@ -34,7 +34,7 @@ def parse_args():
     parser.add_argument('-m', '--mask', type=bool, default=False, help='Set True to remove background')
     parser.add_argument('-t', '--extract_text_box', type=bool, default=False, help='Set True to extract the text bounding box')
     parser.add_argument('-plt', '--plot_result', type=bool, default=False, help='Set to True to plot results')
-    parser.add_argument('-w', '--weights', type=list, default=[0, 1, 0, 1], help='weights for combining descriptors')
+    parser.add_argument('-w', '--weights', type=list, default=[0.3, 1, 0, 1], help='weights for combining descriptors')
     parser.add_argument('-kpd', '--keypoint_detection', type=str, default='ORB', help='Use keypoints to match images, the type of descriptor to use')
     return parser.parse_args()
 
@@ -125,6 +125,7 @@ def main():
             precisionList = []
             recallList = []
             F1List = []
+            framePickle = []
             descriptor = getDescriptor(args.keypoint_detection)
 
             
@@ -160,11 +161,27 @@ def main():
                     # plt.show()
 
                     croppedImages = []
+                    frames = []
                     contours, hierarchy = cv2.findContours(backgroundMask,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
 
                     for cnt in contours:
                         rect = cv2.minAreaRect(cnt)
+
                         croppedImages.append(crop_minAreaRect(rotatedImage, rect))
+
+                        box = cv2.boxPoints(rect)
+                        box = np.int0(box)
+                        if abs(rect[2]) == 90 or rect[2] == 0:
+                            angle = 0
+                        elif rect[2] < 45:
+                            angle = 180 - rect[2]
+                        else:
+                            angle = 90 - rect[2]
+                        frame = [angle, box]
+                        frames.append(frame)
+
+                framePickle.append(frames)
+
 
                 #Find text boxes and their masks if needed
                 masks = []
@@ -272,7 +289,7 @@ def main():
                     else:
                         for score, name in allResultsDescriptors[key][0:args.k_best]:
                             bestAuxDescriptors.append(int(Path(name).stem.split('_')[1]))
-                    bestPicturesDescriptors.append(bestAuxTexture)
+                    bestPicturesDescriptors.append(bestAuxDescriptors)
 
                     for score, name in allResultsDescriptors[key]:
                         if score < 33:
@@ -305,8 +322,11 @@ def main():
 
                     combinedResults = list(zip(all_result_df["Combined"].tolist(), all_result_df["Image"].tolist()))
                     combinedResults.sort(reverse=True)
-                    for scre, name in combinedResults[0:args.k_best]:
-                        bestAuxCombined.append(int(Path(name).stem.split('_')[1]))
+                    if allResultsDescriptors[key][0][0] < 33:
+                        bestAuxCombined = [-1]
+                    else:
+                        for scre, name in combinedResults[0:args.k_best]:
+                            bestAuxCombined.append(int(Path(name).stem.split('_')[1]))
                     # print('Scores for combined: ',combinedResults[0:args.k_best])
                     bestPicturesCombined.append(bestAuxCombined)
 
@@ -361,7 +381,6 @@ def main():
                     with open("results.txt", 'w') as output:
                         for row in textsPickle:
                             output.write(str(row) + '\n')
-                    print(TextBoxPickle)
                     with open('text_boxes' + '.pkl', 'wb') as handle:
                         pickle.dump(TextBoxPickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
                 #Descriptors
@@ -374,6 +393,9 @@ def main():
                 print(f'Combined average precision for k = {args.k_best} is {resultScore}.')
             with open('Hellinger_' + args.color_space + '_segments' + str(args.split) + '.pkl', 'wb') as handle:
                 pickle.dump(resultPickleCombined, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+            with open('frames' + '.pkl', 'wb') as handle:
+                pickle.dump(framePickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
         #--------------------------------------
 
 if __name__ == "__main__":
