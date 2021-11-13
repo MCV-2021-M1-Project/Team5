@@ -147,17 +147,17 @@ def main():
                     plt.title("rotated")
                     plt.show()
                     
-                    plt.imshow(cv2.cvtColor(rotatedMaskFill, cv2.COLOR_BGR2RGB))
-                    plt.axis("off")
-                    plt.title("rotated mask fill")
-                    plt.show()
+                    # plt.imshow(cv2.cvtColor(rotatedMaskFill, cv2.COLOR_BGR2RGB))
+                    # plt.axis("off")
+                    # plt.title("rotated mask fill")
+                    # plt.show()
                     
                     backgroundMask, precision, recall, F1_measure = backgroundRemoval(rotatedMaskFill, filename)
                     
-                    plt.imshow(cv2.cvtColor(backgroundMask, cv2.COLOR_GRAY2RGB))
-                    plt.axis("off")
-                    plt.title("rotatedMask")
-                    plt.show()
+                    # plt.imshow(cv2.cvtColor(backgroundMask, cv2.COLOR_GRAY2RGB))
+                    # plt.axis("off")
+                    # plt.title("rotatedMask")
+                    # plt.show()
 
                     croppedImages = []
                     contours, hierarchy = cv2.findContours(backgroundMask,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
