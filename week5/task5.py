@@ -141,7 +141,10 @@ def main():
                 if args.mask:
                     maskFill = backgroundFill(queryImage)
                     angle = findAngle(maskFill)
+                    
                     rotatedImage = rotate(queryImage, angle)
+                    
+                    maskFill = backgroundFill(rotatedImage)
                     rotatedMaskFill = rotate(maskFill, angle)
                     
                     # plt.imshow(cv2.cvtColor(rotatedImage, cv2.COLOR_BGR2RGB))
