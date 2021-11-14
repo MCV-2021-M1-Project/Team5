@@ -35,7 +35,7 @@ for img in filenames:
 
 array = np.array(resnet_feature_list)
 
-kmeans = KMeans(n_clusters=17, random_state=10).fit(array)
+kmeans = KMeans(n_clusters=30, random_state=5, n_init=20).fit(array)
 print(kmeans.labels_)
 
 c0 = []
@@ -92,109 +92,130 @@ for i, k in enumerate(kmeans.labels_):
         c16.append(images[i])
 
 
+if len(c0) > 1:
+    fig,axes = plt.subplots(1, min(len(c0),10))
+    for ind, ax in enumerate(axes.flatten()):
+        ax.imshow(c0[ind])
+        ax.axis('off')
+    plt.tight_layout()
+    plt.show()
 
-fig,axes = plt.subplots(1, min(len(c0),10))
-for ind, ax in enumerate(axes.flatten()):
-    ax.imshow(c0[ind])
-    ax.axis('off')
-plt.tight_layout()
-plt.show()
+if len(c1) > 1:
+    fig,axes = plt.subplots(1, min(len(c1),10))
+    for ind, ax in enumerate(axes.flatten()):
+        ax.imshow(c1[ind])
+        ax.axis('off')
+    plt.tight_layout()
+    plt.show()
 
-fig,axes = plt.subplots(1, min(len(c1),10))
-for ind, ax in enumerate(axes.flatten()):
-    ax.imshow(c1[ind])
-    ax.axis('off')
-plt.tight_layout()
-plt.show()
+if len(c2) > 1:
+    fig,axes = plt.subplots(1, min(len(c2),10))
+    for ind, ax in enumerate(axes.flatten()):
+        ax.imshow(c2[ind])
+        ax.axis('off')
+    plt.tight_layout()
+    plt.show()
 
-fig,axes = plt.subplots(1, min(len(c2),10))
-for ind, ax in enumerate(axes.flatten()):
-    ax.imshow(c2[ind])
-    ax.axis('off')
-plt.tight_layout()
-plt.show()
+if len(c3) > 1:
+    fig,axes = plt.subplots(1, min(len(c3),10))
+    for ind, ax in enumerate(axes.flatten()):
+        ax.imshow(c3[ind])
+        ax.axis('off')
+    plt.tight_layout()
+    plt.show()
 
-fig,axes = plt.subplots(1, min(len(c3),10))
-for ind, ax in enumerate(axes.flatten()):
-    ax.imshow(c3[ind])
-    ax.axis('off')
-plt.tight_layout()
-plt.show()
+if len(c4) > 1:
+    fig,axes = plt.subplots(1, min(len(c4),10))
+    for ind, ax in enumerate(axes.flatten()):
+        ax.imshow(c4[ind])
+        ax.axis('off')
+    plt.tight_layout()
+    plt.show()
 
-fig,axes = plt.subplots(1, min(len(c4),10))
-for ind, ax in enumerate(axes.flatten()):
-    ax.imshow(c4[ind])
-    ax.axis('off')
-plt.tight_layout()
-plt.show()
+if len(c5) > 1:
+    fig,axes = plt.subplots(1, min(len(c5),10))
+    for ind, ax in enumerate(axes.flatten()):
+        ax.imshow(c5[ind])
+        ax.axis('off')
+    plt.tight_layout()
+    plt.show()
 
-fig,axes = plt.subplots(1, min(len(c5),10))
-for ind, ax in enumerate(axes.flatten()):
-    ax.imshow(c5[ind])
-    ax.axis('off')
-plt.tight_layout()
-plt.show()
+if len(c6) > 1:
+    fig,axes = plt.subplots(1, min(len(c6),10))
+    for ind, ax in enumerate(axes.flatten()):
+        ax.imshow(c6[ind])
+        ax.axis('off')
+    plt.tight_layout()
+    plt.show()
 
-fig,axes = plt.subplots(1, min(len(c6),10))
-for ind, ax in enumerate(axes.flatten()):
-    ax.imshow(c6[ind])
-    ax.axis('off')
-plt.tight_layout()
-plt.show()
+if len(c7) > 1:
+    fig,axes = plt.subplots(1, min(len(c7),10))
+    for ind, ax in enumerate(axes.flatten()):
+        ax.imshow(c7[ind])
+        ax.axis('off')
+    plt.tight_layout()
+    plt.show()
 
-fig,axes = plt.subplots(1, min(len(c7),10))
-for ind, ax in enumerate(axes.flatten()):
-    ax.imshow(c7[ind])
-    ax.axis('off')
-plt.tight_layout()
-plt.show()
+if len(c8) > 1:
+    fig,axes = plt.subplots(1, min(len(c8),10))
+    for ind, ax in enumerate(axes.flatten()):
+        ax.imshow(c8[ind])
+        ax.axis('off')
+    plt.tight_layout()
+    plt.show()
 
-fig,axes = plt.subplots(1, min(len(c8),10))
-for ind, ax in enumerate(axes.flatten()):
-    ax.imshow(c8[ind])
-    ax.axis('off')
-plt.tight_layout()
-plt.show()
+if len(c9) > 1:
+    fig,axes = plt.subplots(1, min(len(c9),10))
+    for ind, ax in enumerate(axes.flatten()):
+        ax.imshow(c9[ind])
+        ax.axis('off')
+    plt.tight_layout()
+    plt.show()
+    
+if len(c11) > 1:
+    fig,axes = plt.subplots(1, min(len(c11),10))
+    for ind, ax in enumerate(axes.flatten()):
+        ax.imshow(c11[ind])
+        ax.axis('off')
+    plt.tight_layout()
+    plt.show()
+    
+if len(c12) > 1:
+    fig,axes = plt.subplots(1, min(len(c12),10))
+    for ind, ax in enumerate(axes.flatten()):
+        ax.imshow(c12[ind])
+        ax.axis('off')
+    plt.tight_layout()
+    plt.show()
 
-fig,axes = plt.subplots(1, min(len(c10),10))
-for ind, ax in enumerate(axes.flatten()):
-    ax.imshow(c9[ind])
-    ax.axis('off')
-plt.tight_layout()
-plt.show()
-fig,axes = plt.subplots(1, min(len(c11),10))
-for ind, ax in enumerate(axes.flatten()):
-    ax.imshow(c9[ind])
-    ax.axis('off')
-plt.tight_layout()
-plt.show()
-fig,axes = plt.subplots(1, min(len(c12),10))
-for ind, ax in enumerate(axes.flatten()):
-    ax.imshow(c9[ind])
-    ax.axis('off')
-plt.tight_layout()
-plt.show()
-fig,axes = plt.subplots(1, min(len(c13),10))
-for ind, ax in enumerate(axes.flatten()):
-    ax.imshow(c9[ind])
-    ax.axis('off')
-plt.tight_layout()
-plt.show()
-fig,axes = plt.subplots(1, min(len(c14),10))
-for ind, ax in enumerate(axes.flatten()):
-    ax.imshow(c9[ind])
-    ax.axis('off')
-plt.tight_layout()
-plt.show()
-fig,axes = plt.subplots(1, min(len(c15),10))
-for ind, ax in enumerate(axes.flatten()):
-    ax.imshow(c9[ind])
-    ax.axis('off')
-plt.tight_layout()
-plt.show()
-fig,axes = plt.subplots(1, min(len(c16),10))
-for ind, ax in enumerate(axes.flatten()):
-    ax.imshow(c9[ind])
-    ax.axis('off')
-plt.tight_layout()
-plt.show()
+if len(c13) > 1:
+    fig,axes = plt.subplots(1, min(len(c13),10))
+    for ind, ax in enumerate(axes.flatten()):
+        ax.imshow(c13[ind])
+        ax.axis('off')
+    plt.tight_layout()
+    plt.show()
+
+if len(c14) > 1:
+    fig,axes = plt.subplots(1, min(len(c14),10))
+    for ind, ax in enumerate(axes.flatten()):
+        ax.imshow(c14[ind])
+        ax.axis('off')
+    plt.tight_layout()
+    plt.show()
+
+if len(c15) > 1:
+    fig,axes = plt.subplots(1, min(len(c15),10))
+    for ind, ax in enumerate(axes.flatten()):
+        ax.imshow(c15[ind])
+        ax.axis('off')
+    plt.tight_layout()
+    plt.show()
+
+if len(c16) > 1:
+    fig,axes = plt.subplots(1, min(len(c16),10))
+    for ind, ax in enumerate(axes.flatten()):
+        ax.imshow(c16[ind])
+        ax.axis('off')
+    plt.tight_layout()
+    plt.show()

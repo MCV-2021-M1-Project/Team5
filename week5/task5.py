@@ -34,7 +34,7 @@ def parse_args():
     parser.add_argument('-m', '--mask', type=bool, default=False, help='Set True to remove background')
     parser.add_argument('-t', '--extract_text_box', type=bool, default=False, help='Set True to extract the text bounding box')
     parser.add_argument('-plt', '--plot_result', type=bool, default=False, help='Set to True to plot results')
-    parser.add_argument('-w', '--weights', type=list, default=[0.3, 1, 0, 1], help='weights for combining descriptors')
+    parser.add_argument('-w', '--weights', type=list, default=[0.2, 0.8, 0, 1], help='weights for combining descriptors')
     parser.add_argument('-kpd', '--keypoint_detection', type=str, default='ORB', help='Use keypoints to match images, the type of descriptor to use')
     return parser.parse_args()
 
@@ -326,7 +326,7 @@ def main():
 
                     combinedResults = list(zip(all_result_df["Combined"].tolist(), all_result_df["Image"].tolist()))
                     combinedResults.sort(reverse=True)
-                    if allResultsDescriptors[key][0][0] < 33:
+                    if allResultsDescriptors[key][0][0] < 40:
                         bestAuxCombined = [-1]
                     else:
                         for scre, name in combinedResults[0:args.k_best]:

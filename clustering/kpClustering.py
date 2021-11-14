@@ -14,7 +14,7 @@ else:
     exit(-1)
 
 ddbb_imgs = utils.loadAllImages('../../datasets/BBDD')
-queryImg = cv2.imread('shadow.png')
+queryImg = cv2.imread('bbdd_00043.jpg')
 
 descriptor = cv2.ORB_create()
 queryKp, queryDescp = descriptor.detectAndCompute(queryImg, None)
