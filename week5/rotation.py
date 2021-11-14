@@ -27,7 +27,7 @@ def findAngle(maskFill):
                 angle -= 90
         angles.append(angle)
         
-    # print(statistics.median(angles))
+    print(statistics.median(angles))
     return statistics.median(angles)
 
     # plt.imshow(cv2.cvtColor(maskFill, cv2.COLOR_BGR2RGB))
