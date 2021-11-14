@@ -133,7 +133,7 @@ def backgroundFill(queryImage):
     queryImageGray = cv2.cvtColor(queryImage, cv2.COLOR_BGR2GRAY)
     
     #Draw contours
-    contours = cv2.Canny(queryImageGray,50,160)
+    contours = cv2.Canny(queryImageGray,40,140)
 
     #Ensuring there are no open regions on edges (40px minimum)
     contours[0:30, :], contours[-30:, :], contours[:, 0:30], contours[:, -30:] = 0, 0, 0, 0
