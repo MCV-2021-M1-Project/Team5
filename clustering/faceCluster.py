@@ -13,17 +13,21 @@ filenames.sort()
 
 # Load images to a list
 images = []
+counter = 0
 for img in filenames:
     # Pass all images through DeepFace
-    faces = RetinaFace.extract_faces(filenames, model=retina_model)
+    faces = RetinaFace.extract_faces(img, model=retina_model)
 
     if len(faces) > 0:
+        counter = counter + 1
         im = cv2.imread(img)
         image = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
         pixels = np.array(image)
         images.append(pixels)
+        if counter > 19:
+            break
 
-fig,axes = plt.subplots(2, 3)
+fig,axes = plt.subplots(2, 10)
 for ind, ax in enumerate(axes.flatten()):
     ax.imshow(images[ind])
     ax.axis('off')
