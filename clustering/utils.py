@@ -5,6 +5,17 @@ from skimage.transform import AffineTransform
 import numpy as np
 from matplotlib import pyplot as plt
 
+def plotHistogram(hist, bins = 100):
+    # plot the histogram
+    plt.figure()
+    plt.title("Histogram")
+    plt.xlabel("Bins")
+    plt.ylabel("% of Pixels")
+    plt.plot(hist)
+    plt.xlim([0, bins])
+
+    plt.show()
+
 def loadAllImages(folderPath):
     
     ddbb_images = {}
