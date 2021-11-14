@@ -167,6 +167,13 @@ def main():
                     frames = []
                     contours, hierarchy = cv2.findContours(backgroundMask,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
 
+
+                    #Converting to requested angle format
+                    if angle < 0:
+                        angle = abs(angle)
+                    elif angle > 0:
+                        angle = 180 - angle
+                    
                     for cnt in contours:
                         rect = cv2.minAreaRect(cnt)
 
@@ -174,12 +181,15 @@ def main():
 
                         box = cv2.boxPoints(rect)
                         box = np.int0(box)
-                        if abs(rect[2]) == 90 or rect[2] == 0:
-                            angle = 0
-                        elif rect[2] < 45:
-                            angle = 180 - rect[2]
-                        else:
-                            angle = 90 - rect[2]
+                        
+                        # if abs(rect[2]) == 90 or rect[2] == 0:
+                        #     angle = 0
+                        # elif rect[2] < 45:
+                        #     angle = 180 - rect[2]
+                        # else:
+                        #     angle = 90 - rect[2]
+                            
+                            
                         frame = [angle, box]
                         frames.append(frame)
 
