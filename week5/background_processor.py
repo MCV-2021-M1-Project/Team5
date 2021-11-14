@@ -153,7 +153,7 @@ def backgroundRemoval(maskFill, filename):
 
     #Further cleaning using morphology
     #Closing with _ as structuring element
-    kernelSize = (round(maskFill.shape[0]/8), round(maskFill.shape[1]/30))
+    kernelSize = (round(maskFill.shape[0]/32), round(maskFill.shape[1]/50))
     maskClosing = mo.closingImage(maskCleanExt, kernelSize)
     #Opening with tall rectangle as structuring element (removing labels, etc.)
     kernelSize = (round(maskFill.shape[0]/4), round(maskFill.shape[1]/12))
